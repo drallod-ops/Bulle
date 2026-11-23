@@ -18,11 +18,12 @@ import { EnviesPage } from './pages/Envies';
 import { PrayerPage } from './pages/Prayer';
 import { Button, Modal, ErrorBanner } from './components/UI';
 import { DEFAULT_GAMES } from './services/adeuxContent';
-import { uploadPhoto, trashPhoto } from './services/db';
+import { trashPhoto } from './services/db';
+import { queuePhotoUpload } from './services/photoUpload';
 import { config, refresh, onRefresh } from './services/api';
 import { pullSharedSettingsToLocal } from './services/settings';
 import { SetupScreen, AccountModal, SyncBadge } from './components/Account';
-import { compressPhoto, extractPhotoMetadata, reverseGeocodeCity } from './services/photoService';
+import { extractPhotoMetadata, reverseGeocodeCity } from './services/photoService';
 import { BucketItem, PrayerTopic, Memory } from './types';
 import { T, CONTEXT, SOURCE_COLORS, SOURCE_LABELS, ThemeName, THEME_ORDER, applyTheme, chooseTheme, getStoredTheme } from './theme';
 import { applyStoredOverrides } from './services/colorOverrides';
@@ -178,22 +179,10 @@ function AppContent({ onLogout }: { onLogout: () => void }) {
     setSaving(true);
     setSaveError(null);
     try {
-      let photo_url: string | undefined;
-      let photo_file_id: string | undefined;
-      if (draftPhotoFile) {
-        try {
-          const compressed = await compressPhoto(draftPhotoFile);
-          const uploaded = await uploadPhoto(compressed);
-          photo_url = uploaded.url;
-          photo_file_id = uploaded.file_id;
-        } catch (photoErr: any) {
-          throw new Error(
-            navigator.onLine === false
-              ? "Pas de réseau : la photo n'a pas pu être envoyée. Réessayez une fois connecté."
-              : `Échec de l'envoi de la photo : ${photoErr?.message || photoErr}`
-          );
-        }
-      }
+      // La photo est envoyée en arrière-plan, après l'enregistrement de l'instant.
+      const photo_url: string | undefined = undefined;
+      const photo_file_id: string | undefined = undefined;
+      const photoToSend = draftPhotoFile;
       const previousFileId = editingId ? memories.find((m) => m.id === editingId)?.photo_file_id : undefined;
 
       if (editingId) {
@@ -205,16 +194,13 @@ function AppContent({ onLogout }: { onLogout: () => void }) {
           source_id: draftSourceId,
           updated_at: new Date().toISOString(),
         };
-        if (photo_url) {
-          updates.photo_url = photo_url;
-          updates.photo_file_id = photo_file_id;
-          trashPhoto(previousFileId);
-        } else if (removePhoto) {
+        if (removePhoto && !photoToSend) {
           updates.photo_url = null as any;
           updates.photo_file_id = null as any;
           trashPhoto(previousFileId);
         }
         await updateMemoryAction(editingId, updates);
+        if (photoToSend) queuePhotoUpload(editingId, photoToSend, previousFileId);
       } else {
         const memory = {
           text: draftText.trim(),
@@ -231,7 +217,8 @@ function AppContent({ onLogout }: { onLogout: () => void }) {
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         };
-        await addMemory(memory);
+        const saved = await addMemory(memory);
+        if (photoToSend && saved) queuePhotoUpload(saved.id, photoToSend);
       }
       setShowCreateMemory(false);
       setEditingId(null);

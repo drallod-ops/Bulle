@@ -18,7 +18,9 @@ interface MemoryStore {
   loadMemories: () => Promise<void>;
   loadTrash: () => Promise<void>;
   setMemories: (memories: Memory[]) => void;
-  addMemory: (memory: Omit<Memory, 'id'>) => Promise<void>;
+  addMemory: (memory: Omit<Memory, 'id'>) => Promise<Memory | undefined>;
+  /** Aperçu local d'une photo en cours d'envoi (non enregistré dans le Sheets). */
+  setLocalPhoto: (id: string, url: string | undefined) => void;
   updateMemory: (id: string, memory: Partial<Memory>) => Promise<void>;
   deleteMemory: (id: string) => Promise<void>;
   restore: (id: string) => Promise<void>;
@@ -62,6 +64,7 @@ export const useMemoryStore = create<MemoryStore>((set, get) => ({
       set((state) => ({
         memories: state.memories.map((m) => (m.id === tempId ? saved : m)),
       }));
+      return saved;
     } catch (e: any) {
       set((state) => ({
         memories: state.memories.filter((m) => m.id !== tempId),
@@ -70,6 +73,9 @@ export const useMemoryStore = create<MemoryStore>((set, get) => ({
       throw e;
     }
   },
+
+  setLocalPhoto: (id, url) =>
+    set((state) => ({ memories: state.memories.map((m) => (m.id === id ? { ...m, photo_url: url } : m)) })),
 
   updateMemory: async (id, memory) => {
     const previous = get().memories;

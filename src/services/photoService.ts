@@ -56,8 +56,8 @@ export async function reverseGeocodeCity(latitude: number, longitude: number): P
 // ni GPS, ni date, ni aucune autre métadonnée d'origine — même si ces
 // informations ont été lues juste avant (extractPhotoMetadata) pour
 // préremplir la date et le lieu de l'instant.
-const MAX_WIDTH = 1920;
-const QUALITY = 0.82;
+const MAX_WIDTH = 1600;
+const QUALITY = 0.8;
 
 export async function compressPhoto(file: File): Promise<File> {
   // Les GIF/SVG ne se prêtent pas à cette compression, on les laisse tels quels.
@@ -76,13 +76,18 @@ export async function compressPhoto(file: File): Promise<File> {
     if (!ctx) return file;
     ctx.drawImage(bitmap, 0, 0, width, height);
 
-    const blob: Blob | null = await new Promise((resolve) =>
-      canvas.toBlob(resolve, 'image/webp', QUALITY)
-    );
+    let blob: Blob | null = await new Promise((resolve) => canvas.toBlob(resolve, 'image/webp', QUALITY));
+    // Safari (iPhone) ne sait pas produire de WebP : il renvoie alors un PNG
+    // de plusieurs Mo, très long à envoyer. On repasse en JPEG dans ce cas.
+    if (!blob || blob.type !== 'image/webp') {
+      blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', QUALITY));
+    }
     if (!blob) return file;
+    if (blob.size > file.size && file.type === 'image/jpeg') return file;
 
-    const newName = file.name.replace(/\.[^.]+$/, '') + '.webp';
-    return new File([blob], newName, { type: 'image/webp' });
+    const ext = blob.type === 'image/webp' ? '.webp' : '.jpg';
+    const newName = file.name.replace(/\.[^.]+$/, '') + ext;
+    return new File([blob], newName, { type: blob.type });
   } catch {
     // En cas d'échec (navigateur non compatible, etc.), on envoie l'original.
     return file;

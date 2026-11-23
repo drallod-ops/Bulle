@@ -3,11 +3,11 @@ import { useUndo } from '../stores/undoStore';
 
 /** Bandeau en bas d'écran : « Coché. Annuler ». */
 export const UndoToast: React.FC = () => {
-  const { message, undo, key, hide } = useUndo();
+  const { message, undo, actionLabel, key, hide } = useUndo();
   if (!message) return null;
   return (
     <div key={key} className="undo-toast" role="status">
-      <span>{message}</span>
+      <span onClick={hide} style={{ flex: 1 }}>{message}</span>
       {undo && (
         <button
           onClick={() => {
@@ -15,7 +15,7 @@ export const UndoToast: React.FC = () => {
             hide();
           }}
         >
-          Annuler
+          {actionLabel}
         </button>
       )}
     </div>

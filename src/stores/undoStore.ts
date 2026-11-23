@@ -5,8 +5,9 @@ import { create } from 'zustand';
 interface UndoState {
   message: string | null;
   undo: (() => void) | null;
+  actionLabel: string;
   key: number;
-  show: (message: string, undo?: () => void) => void;
+  show: (message: string, undo?: () => void, actionLabel?: string, durationMs?: number) => void;
   hide: () => void;
 }
 
@@ -15,11 +16,12 @@ let timer: ReturnType<typeof setTimeout> | null = null;
 export const useUndo = create<UndoState>((set) => ({
   message: null,
   undo: null,
+  actionLabel: 'Annuler',
   key: 0,
-  show: (message, undo) => {
+  show: (message, undo, actionLabel = 'Annuler', durationMs = 5000) => {
     if (timer) clearTimeout(timer);
-    set((s) => ({ message, undo: undo || null, key: s.key + 1 }));
-    timer = setTimeout(() => set({ message: null, undo: null }), 5000);
+    set((s) => ({ message, undo: undo || null, actionLabel, key: s.key + 1 }));
+    if (durationMs > 0) timer = setTimeout(() => set({ message: null, undo: null }), durationMs);
   },
   hide: () => {
     if (timer) clearTimeout(timer);
@@ -28,3 +30,6 @@ export const useUndo = create<UndoState>((set) => ({
 }));
 
 export const showUndo = (message: string, undo?: () => void) => useUndo.getState().show(message, undo);
+/** Message d'état, avec une action facultative (ex. « Réessayer »). */
+export const showNotice = (message: string, action?: () => void, actionLabel?: string, durationMs = 5000) =>
+  useUndo.getState().show(message, action, actionLabel, durationMs);
