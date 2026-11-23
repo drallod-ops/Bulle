@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Sofa, Image, Users, Sparkles, HandHeart, Camera, X, UserRound } from 'lucide-react';
+import { Sofa, Image, Users, Sparkles, HandHeart, Camera, X, UserRound, Plus } from 'lucide-react';
+import { UndoToast } from './components/Feedback';
+import { QuickAdd } from './components/QuickAdd';
 import { useMemoryStore } from './stores/memoryStore';
 import { useGameStore } from './stores/gameStore';
 import { useBucketStore } from './stores/bucketStore';
@@ -14,7 +16,7 @@ import { InstantsPage } from './pages/Instants';
 import { AdeuxPage } from './pages/Adeux';
 import { EnviesPage } from './pages/Envies';
 import { PrayerPage } from './pages/Prayer';
-import { Button, Modal, ErrorBanner, Spinner } from './components/UI';
+import { Button, Modal, ErrorBanner } from './components/UI';
 import { DEFAULT_GAMES } from './services/adeuxContent';
 import { uploadPhoto, trashPhoto } from './services/db';
 import { config, refresh, onRefresh } from './services/api';
@@ -57,6 +59,8 @@ function AppContent({ onLogout }: { onLogout: () => void }) {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [showColorEditor, setShowColorEditor] = useState(false);
   const [showAccount, setShowAccount] = useState(false);
+  const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const [initialGame, setInitialGame] = useState<string | null>(null);
 
   useEffect(() => {
     applyTheme(theme);
@@ -264,67 +268,59 @@ function AppContent({ onLogout }: { onLogout: () => void }) {
         fontFamily: T.font,
       }}
     >
-      {/* Header */}
-      <div
-        style={{
-          background: T.surface,
-          borderBottom: `1px solid ${T.border}`,
-          padding: 'calc(12px + env(safe-area-inset-top)) 16px 12px',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-        }}
-      >
-        <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0, color: T.ink }}>Bulle</h1>
+      {/* En-tête : titre de la page, bordé d'une frise façon tapis mosaïque */}
+      <header className="app-header">
+        <h1 className="app-title">{TAB_TITLES[tab]}</h1>
         <div className="row">
           <SyncBadge />
           <button onClick={() => setShowAccount(true)} className="icon-btn" aria-label="Vous deux">
-            <UserRound size={20} color={T.sage} />
+            <UserRound size={20} />
           </button>
         </div>
-      </div>
+      </header>
 
       {/* Content */}
-      <div style={{ flex: 1, overflow: 'auto', padding: '16px' }}>
+      <main className="app-content">
         {tab === 'sofa' && (
-          <HomePage onNavigate={(t) => setTab(t as Tab)} theme={theme} onCycleTheme={cycleTheme} onOpenColorEditor={() => setShowColorEditor(true)} />
+          <HomePage
+            onNavigate={(t, game) => { setInitialGame(game || null); setTab(t as Tab); }}
+            theme={theme}
+            onCycleTheme={cycleTheme}
+            onOpenColorEditor={() => setShowColorEditor(true)}
+          />
         )}
-        <React.Suspense fallback={<Spinner />}>
-          {tab === 'instants' && <InstantsPage onCreateClick={() => openCreateMemory()} onEditClick={openEditMemory} />}
-          {tab === 'adeux' && <AdeuxPage onCreateMemoryFor={handleCreateMemoryForAdeux} />}
-          {tab === 'envies' && <EnviesPage onCreateMemoryFor={handleCreateMemoryForBucket} />}
-          {tab === 'priere' && <PrayerPage onCreateMemoryFor={handleCreateMemoryForPrayer} />}
-        </React.Suspense>
-      </div>
+        {tab === 'instants' && <InstantsPage onCreateClick={() => openCreateMemory()} onEditClick={openEditMemory} />}
+        {tab === 'adeux' && <AdeuxPage onCreateMemoryFor={handleCreateMemoryForAdeux} initialGame={initialGame} />}
+        {tab === 'envies' && <EnviesPage onCreateMemoryFor={handleCreateMemoryForBucket} />}
+        {tab === 'priere' && <PrayerPage onCreateMemoryFor={handleCreateMemoryForPrayer} />}
+      </main>
 
-      {/* Bottom Navigation */}
-      <div
-        style={{
-          position: 'fixed',
-          bottom: 0,
-          left: 0,
-          right: 0,
-          background: T.surface,
-          borderTop: `1px solid ${T.border}`,
-          display: 'grid',
-          gridTemplateColumns: 'repeat(5, 1fr)',
-          padding: '8px 8px calc(8px + env(safe-area-inset-bottom))',
-          gap: 8,
-        }}
-      >
-        <NavButton icon={<Sofa size={20} />} label="Le Sofa" active={tab === 'sofa'} color={T.sage} onClick={() => setTab('sofa')} />
-        <NavButton icon={<Image size={20} />} label="Instants" active={tab === 'instants'} color={CONTEXT.instants} onClick={() => setTab('instants')} />
-        <NavButton icon={<Users size={20} />} label="À deux" active={tab === 'adeux'} color={CONTEXT.adeux} onClick={() => setTab('adeux')} />
-        <NavButton icon={<Sparkles size={20} />} label="Envies" active={tab === 'envies'} color={CONTEXT.envies} onClick={() => setTab('envies')} />
-        <NavButton icon={<HandHeart size={20} />} label="Prière" active={tab === 'priere'} color={CONTEXT.priere} onClick={() => setTab('priere')} />
-      </div>
+      <button className="fab" onClick={() => setShowQuickAdd(true)} aria-label="Ajouter un instant, une envie ou une prière">
+        <Plus size={26} />
+      </button>
+      <UndoToast />
+      <QuickAdd
+        isOpen={showQuickAdd}
+        onClose={() => setShowQuickAdd(false)}
+        onInstant={() => { setShowQuickAdd(false); openCreateMemory(); }}
+        defaultKind={tab === 'priere' ? 'priere' : tab === 'instants' ? 'instant' : 'envie'}
+      />
+
+      {/* Navigation : le « parquet », en lames de bois rayé */}
+      <nav className="app-nav" aria-label="Sections">
+        <NavButton icon={<Sofa size={21} />} label="Accueil" active={tab === 'sofa'} onClick={() => setTab('sofa')} />
+        <NavButton icon={<Image size={21} />} label="Instants" active={tab === 'instants'} onClick={() => setTab('instants')} />
+        <NavButton icon={<Users size={21} />} label="À deux" active={tab === 'adeux'} onClick={() => { setInitialGame(null); setTab('adeux'); }} />
+        <NavButton icon={<Sparkles size={21} />} label="Envies" active={tab === 'envies'} onClick={() => setTab('envies')} />
+        <NavButton icon={<HandHeart size={21} />} label="Prière" active={tab === 'priere'} onClick={() => setTab('priere')} />
+      </nav>
 
       {/* Create Memory (Instant) Modal */}
       <Modal isOpen={showCreateMemory} onClose={() => setShowCreateMemory(false)} title={editingId ? 'Modifier l\'instant' : 'Créer un instant'}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {saveError && <ErrorBanner message={saveError} />}
           <div>
-            <label style={{ fontSize: 12, color: T.muted, display: 'block', marginBottom: 8 }}>
+            <label style={{ fontSize: 13, color: T.muted, display: 'block', marginBottom: 8 }}>
               Lié à...
             </label>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -338,7 +334,7 @@ function AppContent({ onLogout }: { onLogout: () => void }) {
                     border: draftSource === s ? `1px solid ${SOURCE_COLORS[s]}` : `1px solid ${T.border}`,
                     background: draftSource === s ? SOURCE_COLORS[s] : 'transparent',
                     color: draftSource === s ? '#fff' : T.muted,
-                    fontSize: 12,
+                    fontSize: 13,
                     fontFamily: T.font,
                     fontWeight: 600,
                     cursor: 'pointer',
@@ -370,7 +366,7 @@ function AppContent({ onLogout }: { onLogout: () => void }) {
           />
 
           <div>
-            <label style={{ fontSize: 12, color: T.muted, display: 'block', marginBottom: 8 }}>
+            <label style={{ fontSize: 13, color: T.muted, display: 'block', marginBottom: 8 }}>
               Photo (optionnelle)
             </label>
             {draftPhotoPreview ? (
@@ -485,46 +481,11 @@ function AppContent({ onLogout }: { onLogout: () => void }) {
   );
 }
 
-interface NavButtonProps {
-  icon: React.ReactNode;
-  label: string;
-  active: boolean;
-  color: string;
-  onClick: () => void;
-}
+const TAB_TITLES: Record<string, string> = { sofa: 'Bulle', instants: 'Instants', adeux: 'À deux', envies: 'Envies', priere: 'Prière' };
 
-const NavButton: React.FC<NavButtonProps> = ({ icon, label, active, color, onClick }) => (
-  <button
-    onClick={onClick}
-    style={{
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      gap: 4,
-      background: 'none',
-      border: 'none',
-      cursor: 'pointer',
-      color: active ? color : T.muted,
-      fontSize: 10,
-      fontFamily: T.font,
-      fontWeight: active ? 700 : 500,
-      transition: 'color 0.2s',
-    }}
-  >
-    <span
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        width: 34,
-        height: 26,
-        borderRadius: 14,
-        background: active ? `${color}20` : 'transparent',
-        transition: 'background 0.2s',
-      }}
-    >
-      {icon}
-    </span>
+const NavButton: React.FC<{ icon: React.ReactNode; label: string; active: boolean; onClick: () => void }> = ({ icon, label, active, onClick }) => (
+  <button className={`nav-btn${active ? ' on' : ''}`} onClick={onClick} aria-current={active ? 'page' : undefined}>
+    <span className="nav-pill">{icon}</span>
     {label}
   </button>
 );

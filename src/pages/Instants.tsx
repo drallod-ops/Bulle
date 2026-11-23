@@ -194,18 +194,18 @@ export const InstantsPage: React.FC<InstantsPageProps> = ({ onCreateClick, onEdi
                 {current.photo_url && (
                   <img src={current.photo_url} alt="" style={{ width: '100%', height: 200, objectFit: 'cover', borderRadius: T.radiusMd, marginBottom: 14 }} />
                 )}
-                <p style={{ fontSize: 12, color: T.muted, margin: '0 0 8px 0' }}>
+                <p style={{ fontSize: 13, color: T.muted, margin: '0 0 8px 0' }}>
                   {current.poetic || new Date(current.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
                 </p>
                 <p style={{ fontSize: 16, lineHeight: 1.5, margin: 0, flex: 1 }}>{current.text}</p>
                 {current.source !== 'manual' && (
-                  <p style={{ fontSize: 11, color: SOURCE_COLORS[current.source], fontWeight: 600, margin: '10px 0 0 0' }}>{SOURCE_LINK_LABELS[current.source]}</p>
+                  <p style={{ fontSize: 13, color: SOURCE_COLORS[current.source], fontWeight: 600, margin: '10px 0 0 0' }}>{SOURCE_LINK_LABELS[current.source]}</p>
                 )}
               </Card>
             )}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <button onClick={goPrev} style={navBtnStyle}><ChevronLeft size={20} color={T.muted} /></button>
-              <p style={{ fontSize: 12, color: T.muted, margin: 0 }}>{discoverIndex + 1} / {discoverOrder.length}</p>
+              <p style={{ fontSize: 13, color: T.muted, margin: 0 }}>{discoverIndex + 1} / {discoverOrder.length}</p>
               <button onClick={goNext} style={navBtnStyle}><ChevronRight size={20} color={T.muted} /></button>
             </div>
           </div>
@@ -235,7 +235,7 @@ export const InstantsPage: React.FC<InstantsPageProps> = ({ onCreateClick, onEdi
                 border: `1px solid ${activeFilterCount > 0 ? CONTEXT.instants : T.border}`,
                 background: activeFilterCount > 0 ? CONTEXT.instants : 'transparent',
                 color: activeFilterCount > 0 ? '#fff' : T.muted,
-                fontSize: 12, fontFamily: T.font, fontWeight: 600, cursor: 'pointer',
+                fontSize: 13, fontFamily: T.font, fontWeight: 600, cursor: 'pointer',
               }}
             >
               <SlidersHorizontal size={13} />
@@ -259,11 +259,11 @@ export const InstantsPage: React.FC<InstantsPageProps> = ({ onCreateClick, onEdi
                     <div style={{ flex: 1 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, flexWrap: 'wrap' }}>
                         <span style={{ width: 6, height: 6, borderRadius: '50%', background: SOURCE_COLORS[memory.source], flexShrink: 0 }} />
-                        <p style={{ fontSize: 12, color: T.muted, margin: 0 }}>
+                        <p style={{ fontSize: 13, color: T.muted, margin: 0 }}>
                           {new Date(memory.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
                         </p>
                         {memory.source !== 'manual' && (
-                          <span style={{ fontSize: 10, color: SOURCE_COLORS[memory.source], background: `${SOURCE_COLORS[memory.source]}1A`, borderRadius: 20, padding: '2px 8px', fontWeight: 600 }}>
+                          <span style={{ fontSize: 13, color: SOURCE_COLORS[memory.source], background: `${SOURCE_COLORS[memory.source]}1A`, borderRadius: 20, padding: '2px 8px', fontWeight: 600 }}>
                             {SOURCE_LINK_LABELS[memory.source]}
                           </span>
                         )}
@@ -291,7 +291,7 @@ export const InstantsPage: React.FC<InstantsPageProps> = ({ onCreateClick, onEdi
 
       <button
         onClick={openTrash}
-        style={{ background: 'none', border: 'none', color: T.muted, fontSize: 12, fontFamily: T.font, cursor: 'pointer', padding: '4px 0' }}
+        style={{ background: 'none', border: 'none', color: T.muted, fontSize: 13, fontFamily: T.font, cursor: 'pointer', padding: '4px 0' }}
       >
         <Trash2 size={12} style={{ marginRight: 4, verticalAlign: 'middle' }} />
         Corbeille
@@ -305,7 +305,7 @@ export const InstantsPage: React.FC<InstantsPageProps> = ({ onCreateClick, onEdi
             )}
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <p style={{ fontSize: 12, color: T.muted, margin: 0 }}>
+                <p style={{ fontSize: 13, color: T.muted, margin: 0 }}>
                   {selectedMemory.poetic || new Date(selectedMemory.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
                 </p>
                 <button onClick={() => updateMemory(selectedMemory.id, { favorite: !selectedMemory.favorite })} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2 }}>
@@ -314,14 +314,14 @@ export const InstantsPage: React.FC<InstantsPageProps> = ({ onCreateClick, onEdi
               </div>
               <p style={{ fontSize: 16, fontWeight: 500, margin: '8px 0 0 0', lineHeight: 1.5 }}>{selectedMemory.text}</p>
               {selectedMemory.source !== 'manual' && (
-                <p style={{ fontSize: 12, color: SOURCE_COLORS[selectedMemory.source], fontWeight: 600, margin: '8px 0 0 0' }}>{SOURCE_LINK_LABELS[selectedMemory.source]}</p>
+                <p style={{ fontSize: 13, color: SOURCE_COLORS[selectedMemory.source], fontWeight: 600, margin: '8px 0 0 0' }}>{SOURCE_LINK_LABELS[selectedMemory.source]}</p>
               )}
             </div>
             {selectedMemory.location && (
               <>
                 <Divider />
                 <div>
-                  <p style={{ fontSize: 12, color: T.muted, margin: 0 }}>Lieu</p>
+                  <p style={{ fontSize: 13, color: T.muted, margin: 0 }}>Lieu</p>
                   <p style={{ fontSize: 14, margin: '4px 0 0 0' }}>{selectedMemory.location}</p>
                 </div>
               </>
@@ -394,7 +394,7 @@ export const InstantsPage: React.FC<InstantsPageProps> = ({ onCreateClick, onEdi
 
       <Modal isOpen={showTrash} onClose={() => setShowTrash(false)} title="Corbeille">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <p style={{ fontSize: 12, color: T.muted, margin: 0 }}>
+          <p style={{ fontSize: 13, color: T.muted, margin: 0 }}>
             Les instants supprimés restent ici 30 jours avant suppression définitive.
           </p>
           {trashed.length === 0 && <p style={{ fontSize: 13, color: T.muted }}>La corbeille est vide.</p>}
@@ -438,7 +438,7 @@ export const InstantsPage: React.FC<InstantsPageProps> = ({ onCreateClick, onEdi
       <Modal isOpen={showFilters} onClose={() => setShowFilters(false)} title="Filtres">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
           <div>
-            <p style={{ fontSize: 12, color: T.muted, margin: '0 0 8px 0' }}>Catégorie</p>
+            <p style={{ fontSize: 13, color: T.muted, margin: '0 0 8px 0' }}>Catégorie</p>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               {FILTERS.map((f) => (
                 <Button key={f.id} size="sm" variant={sourceFilter === f.id ? 'primary' : 'ghost'} onClick={() => setSourceFilter(f.id)}>
@@ -450,7 +450,7 @@ export const InstantsPage: React.FC<InstantsPageProps> = ({ onCreateClick, onEdi
 
           {collections.length > 0 && (
             <div>
-              <p style={{ fontSize: 12, color: T.muted, margin: '0 0 8px 0' }}>Collection</p>
+              <p style={{ fontSize: 13, color: T.muted, margin: '0 0 8px 0' }}>Collection</p>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 <Button size="sm" variant={!collectionFilter ? 'primary' : 'ghost'} onClick={() => setCollectionFilter(null)}>
                   Toutes
@@ -466,7 +466,7 @@ export const InstantsPage: React.FC<InstantsPageProps> = ({ onCreateClick, onEdi
 
           {locations.length > 0 && (
             <div>
-              <p style={{ fontSize: 12, color: T.muted, margin: '0 0 8px 0' }}>Lieu</p>
+              <p style={{ fontSize: 13, color: T.muted, margin: '0 0 8px 0' }}>Lieu</p>
               <select
                 value={locationFilter}
                 onChange={(e) => setLocationFilter(e.target.value)}
@@ -484,7 +484,7 @@ export const InstantsPage: React.FC<InstantsPageProps> = ({ onCreateClick, onEdi
           )}
 
           <div>
-            <p style={{ fontSize: 12, color: T.muted, margin: '0 0 8px 0' }}>Période</p>
+            <p style={{ fontSize: 13, color: T.muted, margin: '0 0 8px 0' }}>Période</p>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
               <input
                 type="date"
@@ -492,7 +492,7 @@ export const InstantsPage: React.FC<InstantsPageProps> = ({ onCreateClick, onEdi
                 onChange={(e) => setDateFrom(e.target.value)}
                 style={{ flex: 1, border: `1px solid ${T.border}`, borderRadius: T.radiusMd, padding: '10px 12px', fontFamily: T.font, fontSize: 13, color: T.ink, background: T.surface }}
               />
-              <span style={{ color: T.muted, fontSize: 12 }}>à</span>
+              <span style={{ color: T.muted, fontSize: 13 }}>à</span>
               <input
                 type="date"
                 value={dateTo}
@@ -547,7 +547,7 @@ const ModeButton: React.FC<{ active: boolean; icon: React.ReactNode; label: stri
       display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 20,
       border: `1px solid ${active ? CONTEXT.instants : T.border}`,
       background: active ? CONTEXT.instants : 'transparent',
-      color: active ? '#fff' : T.muted, fontSize: 12, fontFamily: T.font, fontWeight: 600, cursor: 'pointer',
+      color: active ? '#fff' : T.muted, fontSize: 13, fontFamily: T.font, fontWeight: 600, cursor: 'pointer',
     }}
   >
     {icon}

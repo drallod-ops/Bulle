@@ -1,36 +1,27 @@
-import React, { useMemo, useRef, useState } from 'react';
-import { Image, Users, Sparkles, HandHeart, Palette } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Palette, HandHeart, MessageCircleHeart, Target, Sparkles, Image as ImageIcon, ChevronRight } from 'lucide-react';
 import { useMemoryStore } from '../stores/memoryStore';
 import { useBucketStore } from '../stores/bucketStore';
 import { usePrayerStore } from '../stores/prayerStore';
-import { Card, Button, Modal } from '../components/UI';
-import { T, CONTEXT, ThemeName, THEME_LABELS } from '../theme';
+import { useCustomContentStore } from '../stores/customContentStore';
+import { Button, Modal } from '../components/UI';
+import { CONTEXT, ThemeName, THEME_LABELS } from '../theme';
 import { getTogetherSince, setTogetherSince, getFunDurationSince } from '../services/togetherSince';
+import { config, onRefresh } from '../services/api';
+import { playersOrDefault } from '../services/settings';
+import { questionOfDay, dailyAnswers, defiOfWeek, defiDone } from '../services/daily';
+import { stablePick, todayKey, formatDate } from '../services/time';
 
 interface HomeProps {
-  onNavigate: (tab: string) => void;
+  onNavigate: (tab: string, game?: string) => void;
   theme: ThemeName;
   onCycleTheme: () => void;
   onOpenColorEditor: () => void;
 }
 
-const REDECOUVERTE_LINES = [
-  'Il y a quelque temps...',
-  'Un instant à redécouvrir.',
-  'Vous aviez presque oublié ça.',
-  'Une envie qui attend toujours.',
-  'Ce jour-là.',
-];
+const LAST_SEEN_KEY = 'bulle_last_seen';
 
-const POSITIVE_MESSAGES = [
-  'Chaque instant partagé construit votre histoire.',
-  'Une petite attention peut créer un grand souvenir.',
-  "Et si aujourd'hui devenait un instant à revivre ?",
-  'Chaque jour est une nouvelle page de votre histoire.',
-  'Les plus beaux souvenirs commencent souvent simplement.',
-];
-
-function getGreeting(): string {
+function greeting(): string {
   const h = new Date().getHours();
   if (h >= 5 && h < 12) return 'Bonjour';
   if (h >= 12 && h < 18) return 'Bel après-midi';
@@ -40,186 +31,130 @@ function getGreeting(): string {
 
 export const HomePage: React.FC<HomeProps> = ({ onNavigate, theme, onCycleTheme, onOpenColorEditor }) => {
   const memories = useMemoryStore((s) => s.memories);
-  const bucketItems = useBucketStore((s) => s.items);
-  const prayerTopics = usePrayerStore((s) => s.topics);
+  const envies = useBucketStore((s) => s.items);
+  const prayers = usePrayerStore((s) => s.topics);
+  const customQuestions = useCustomContentStore((s) => s.questions);
+  const customDefis = useCustomContentStore((s) => s.defis);
+  const [, setTick] = useState(0);
+  useEffect(() => onRefresh(() => setTick((t) => t + 1)), []);
 
-  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const greeting = useMemo(() => getGreeting(), []);
-  const positiveMessage = useMemo(
-    () => POSITIVE_MESSAGES[Math.floor(Math.random() * POSITIVE_MESSAGES.length)],
-    []
-  );
-  const redecouverteLine = useMemo(
-    () => REDECOUVERTE_LINES[Math.floor(Math.random() * REDECOUVERTE_LINES.length)],
-    []
-  );
+  const me = config.me();
+  const [other] = playersOrDefault().filter((p) => p !== me);
+  const day = todayKey();
+
+  // Dernière visite : lue une fois à l'ouverture, puis mise à jour.
+  const [lastSeen] = useState(() => {
+    let prev: string | null = null;
+    try {
+      prev = localStorage.getItem(LAST_SEEN_KEY);
+      localStorage.setItem(LAST_SEEN_KEY, new Date().toISOString());
+    } catch {
+      /* ignore */
+    }
+    return prev || new Date(Date.now() - 3 * 86400000).toISOString();
+  });
+
+  const news = useMemo(() => {
+    if (!other) return [];
+    const out: { at: string; text: string; tab: string }[] = [];
+    envies.forEach((e) => {
+      if (e.author === other && e.created_at > lastSeen) out.push({ at: e.created_at, text: `a ajouté l'envie « ${e.title} »`, tab: 'envies' });
+      if (e.completed_by === other && e.completed_at && e.completed_at > lastSeen) out.push({ at: e.completed_at, text: `a coché « ${e.title} »`, tab: 'envies' });
+    });
+    prayers.forEach((p) => {
+      if (p.author === other && p.created_at > lastSeen) out.push({ at: p.created_at, text: `a confié « ${p.title} »`, tab: 'priere' });
+      if (p.answered_by === other && p.answered_at && p.answered_at > lastSeen) out.push({ at: p.answered_at, text: `a noté que « ${p.title} » est exaucé`, tab: 'priere' });
+    });
+    memories.forEach((m) => {
+      if (m.author === other && m.created_at > lastSeen) out.push({ at: m.created_at, text: 'a gardé un nouvel instant', tab: 'instants' });
+    });
+    return out.sort((a, b) => b.at.localeCompare(a.at)).slice(0, 5);
+  }, [envies, prayers, memories, other, lastSeen]);
+
+  const prayerOfDay = stablePick(prayers.filter((p) => p.category === 'toport'), `priere-${day}`);
+  const pending = envies.filter((e) => !e.completed);
+  const envieOfDay = stablePick(pending.filter((e) => e.timing === 'ce_soir').length ? pending.filter((e) => e.timing === 'ce_soir') : pending, `envie-${day}`);
+  const souvenir = useMemo(() => {
+    const md = day.slice(5);
+    const sameDay = memories.filter((m) => m.date?.slice(5, 10) === md && m.date.slice(0, 4) < day.slice(0, 4));
+    if (sameDay.length) {
+      const m = stablePick(sameDay, `souv-${day}`)!;
+      const years = Number(day.slice(0, 4)) - Number(m.date.slice(0, 4));
+      return { m, label: `Il y a ${years} an${years > 1 ? 's' : ''}, jour pour jour` };
+    }
+    const older = memories.filter((m) => m.date && Date.now() - new Date(m.date).getTime() > 30 * 86400000);
+    const m = stablePick(older, `souv-${day}`);
+    return m ? { m, label: `Le ${formatDate(m.date)}` } : null;
+  }, [memories, day]);
+
+  const answers = dailyAnswers();
+  const qdjStatus = answers[me]
+    ? other && answers[other] ? 'Vos deux réponses sont là' : `En attente de ${other}`
+    : other && answers[other] ? `${other} a répondu, à toi !` : 'Pas encore répondu';
+  const done = defiDone();
+  const defiStatus = Object.values(done).every(Boolean) ? 'Relevé tous les deux' : done[me] ? `Fait pour toi, et ${other} ?` : 'À relever avant dimanche';
 
   const [togetherSince, setTogetherSinceState] = useState(getTogetherSince());
-  const funDuration = useMemo(
-    () => (togetherSince ? getFunDurationSince(togetherSince) : ''),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [togetherSince]
-  );
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [dateInput, setDateInput] = useState(togetherSince || '');
-
-  const saveTogetherSince = () => {
-    if (!dateInput) return;
-    setTogetherSince(dateInput);
-    setTogetherSinceState(dateInput);
-    setShowDatePicker(false);
-  };
-
-  // Pioche un élément à redécouvrir : un instant, une envie non faite, ou une prière — au hasard.
-  const redecouverte = useMemo(() => {
-    const pool: { type: 'instant' | 'envie' | 'priere'; label: string }[] = [];
-    if (memories.length > 0) {
-      const m = memories[Math.floor(Math.random() * memories.length)];
-      pool.push({ type: 'instant', label: m.text.slice(0, 60) });
-    }
-    const pendingEnvies = bucketItems.filter((i) => !i.completed);
-    if (pendingEnvies.length > 0) {
-      const e = pendingEnvies[Math.floor(Math.random() * pendingEnvies.length)];
-      pool.push({ type: 'envie', label: e.title });
-    }
-    const activePrayers = prayerTopics.filter((p) => p.category === 'toport');
-    if (activePrayers.length > 0) {
-      const p = activePrayers[Math.floor(Math.random() * activePrayers.length)];
-      pool.push({ type: 'priere', label: p.title });
-    }
-    if (pool.length === 0) return null;
-    return pool[Math.floor(Math.random() * pool.length)];
-  }, [memories, bucketItems, prayerTopics]);
-
-  const redecouverteTarget = (type: string) => {
-    if (type === 'instant') return 'instants';
-    if (type === 'envie') return 'envies';
-    return 'priere';
-  };
+  let pressTimer: ReturnType<typeof setTimeout> | null = null;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 20, paddingBottom: 80, position: 'relative' }}>
-      {/* Forme organique très discrète, en arrière-plan, pour une identité
-          visuelle reconnaissable sans tomber dans le cliché romantique. */}
-      <svg
-        width="220" height="220" viewBox="0 0 220 220"
-        style={{ position: 'absolute', top: -60, right: -70, zIndex: 0, opacity: 0.5, pointerEvents: 'none' }}
-      >
-        <path
-          d="M110 10C150 10 200 40 205 90C210 140 170 190 115 205C60 220 15 180 10 125C5 70 70 10 110 10Z"
-          fill={CONTEXT.instants}
-          opacity={0.08}
-        />
-      </svg>
-
-      <button
-        onClick={onCycleTheme}
-        onTouchStart={() => (longPressTimer.current = setTimeout(onOpenColorEditor, 600))}
-        onTouchEnd={() => longPressTimer.current && clearTimeout(longPressTimer.current)}
-        onMouseDown={() => (longPressTimer.current = setTimeout(onOpenColorEditor, 600))}
-        onMouseUp={() => longPressTimer.current && clearTimeout(longPressTimer.current)}
-        onMouseLeave={() => longPressTimer.current && clearTimeout(longPressTimer.current)}
-        title={`Thème : ${THEME_LABELS[theme]} — appui long pour l'éditeur de couleurs`}
-        style={{
-          position: 'absolute',
-          top: 0,
-          right: 0,
-          zIndex: 1,
-          background: 'none',
-          border: 'none',
-          cursor: 'pointer',
-          padding: 6,
-          color: T.muted,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 4,
-        }}
-      >
-        <Palette size={16} />
-      </button>
-
-      <div style={{ position: 'relative', zIndex: 1 }}>
-        <h1 style={{ fontSize: 28, fontWeight: 700, margin: 0, color: T.ink }}>{greeting}</h1>
-        <p style={{ fontSize: 15, color: T.muted, margin: '6px 0 0 0' }}>
-          {positiveMessage}
-        </p>
-      </div>
-
-      {togetherSince ? (
+    <div className="stack page home">
+      <header className="home-head">
+        <div>
+          <h1 className="home-title">{greeting()}{me ? `, ${me}` : ''}</h1>
+          <button className="link-btn quiet" style={{ padding: '4px 0', textAlign: 'left' }} onClick={() => setShowDatePicker(true)}>
+            {togetherSince ? `Ensemble depuis ${getFunDurationSince(togetherSince)}` : 'Depuis quand êtes-vous ensemble ?'}
+          </button>
+        </div>
         <button
-          onClick={() => setShowDatePicker(true)}
-          style={{
-            alignSelf: 'flex-start', background: 'none', border: 'none', cursor: 'pointer',
-            fontFamily: T.font, fontSize: 12.5, color: T.muted, padding: 0, zIndex: 1,
-          }}
+          className="icon-btn"
+          onClick={onCycleTheme}
+          onTouchStart={() => (pressTimer = setTimeout(onOpenColorEditor, 600))}
+          onTouchEnd={() => pressTimer && clearTimeout(pressTimer)}
+          onContextMenu={(e) => { e.preventDefault(); onOpenColorEditor(); }}
+          aria-label={`Thème ${THEME_LABELS[theme]}. Appui long pour régler les couleurs.`}
+          title={`Thème : ${THEME_LABELS[theme]}`}
         >
-          Ensemble depuis {funDuration} ✨
+          <Palette size={20} />
         </button>
-      ) : (
-        <button
-          onClick={() => setShowDatePicker(true)}
-          style={{
-            alignSelf: 'flex-start', background: 'none', border: 'none', cursor: 'pointer',
-            fontFamily: T.font, fontSize: 12.5, color: T.muted, padding: 0, textDecoration: 'underline', zIndex: 1,
-          }}
-        >
-          Depuis quand êtes-vous ensemble ?
-        </button>
+      </header>
+
+      {news.length > 0 && (
+        <section className="news">
+          <h2 className="section-title">Du nouveau de {other}</h2>
+          {news.map((n, i) => (
+            <button key={i} className="news-line" onClick={() => onNavigate(n.tab)}>
+              <span className="news-dot" />
+              <span><strong>{other}</strong> {n.text}</span>
+            </button>
+          ))}
+        </section>
       )}
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, zIndex: 1 }}>
-        <SofaButton
-          icon={<Image size={18} />}
-          label="Retrouver un instant"
-          color={CONTEXT.instants}
-          onClick={() => onNavigate('instants')}
-        />
-        <SofaButton
-          icon={<Users size={18} />}
-          label="Faire quelque chose à deux"
-          color={CONTEXT.adeux}
-          onClick={() => onNavigate('adeux')}
-        />
-        <SofaButton
-          icon={<Sparkles size={18} />}
-          label="Piocher une envie"
-          color={CONTEXT.envies}
-          onClick={() => onNavigate('envies')}
-        />
-        <SofaButton
-          icon={<HandHeart size={18} />}
-          label="Prendre un temps de prière"
-          color={CONTEXT.priere}
-          onClick={() => onNavigate('priere')}
-        />
-      </div>
+      <section className="stack-sm">
+        <h2 className="section-title">Aujourd'hui</h2>
+        <TodayCard icon={<MessageCircleHeart size={18} />} color={CONTEXT.adeux} label="La question du jour" status={qdjStatus}
+          text={questionOfDay(day, customQuestions.filter((q) => q.theme !== '__mot').map((q) => q.question))}
+          onClick={() => onNavigate('adeux', 'question-du-jour')} />
+        {prayerOfDay && (
+          <TodayCard icon={<HandHeart size={18} />} color={CONTEXT.priere} label="Prions pour" text={prayerOfDay.title} onClick={() => onNavigate('priere')} />
+        )}
+        <TodayCard icon={<Target size={18} />} color={CONTEXT.adeux} label="Le défi de la semaine" status={defiStatus}
+          text={defiOfWeek(undefined, customDefis.map((d) => d.text))} onClick={() => onNavigate('adeux', 'defi-semaine')} />
+        {envieOfDay && (
+          <TodayCard icon={<Sparkles size={18} />} color={CONTEXT.envies} label="Et si vous faisiez ça ?" text={envieOfDay.title} onClick={() => onNavigate('envies')} />
+        )}
+        {souvenir && (
+          <TodayCard icon={<ImageIcon size={18} />} color={CONTEXT.instants} label={souvenir.label} text={souvenir.m.text} photo={souvenir.m.photo_url} onClick={() => onNavigate('instants')} />
+        )}
+      </section>
 
-      {redecouverte && (
-        <Card
-          onClick={() => onNavigate(redecouverteTarget(redecouverte.type))}
-          style={{ cursor: 'pointer', zIndex: 1 }}
-        >
-          <p style={{ fontSize: 11, color: T.muted, margin: '0 0 6px 0', letterSpacing: 0.3 }}>
-            {redecouverteLine}
-          </p>
-          <p style={{ fontSize: 14, color: T.ink, margin: 0, lineHeight: 1.4 }}>
-            {redecouverte.label}
-          </p>
-        </Card>
-      )}
-
-      <Modal isOpen={showDatePicker} onClose={() => setShowDatePicker(false)} title="Ensemble depuis...">
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <input
-            type="date"
-            value={dateInput}
-            onChange={(e) => setDateInput(e.target.value)}
-            style={{
-              border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '12px 16px',
-              fontFamily: T.font, fontSize: 14, color: T.ink, background: T.surface,
-            }}
-          />
-          <Button full onClick={saveTogetherSince} disabled={!dateInput}>
+      <Modal isOpen={showDatePicker} onClose={() => setShowDatePicker(false)} title="Ensemble depuis…">
+        <div className="stack">
+          <input className="field" type="date" value={dateInput} onChange={(e) => setDateInput(e.target.value)} />
+          <Button full disabled={!dateInput} onClick={() => { setTogetherSince(dateInput); setTogetherSinceState(dateInput); setShowDatePicker(false); }}>
             Enregistrer
           </Button>
         </div>
@@ -228,46 +163,16 @@ export const HomePage: React.FC<HomeProps> = ({ onNavigate, theme, onCycleTheme,
   );
 };
 
-interface SofaButtonProps {
-  icon: React.ReactNode;
-  label: string;
-  color: string;
-  onClick: () => void;
-}
-
-const SofaButton: React.FC<SofaButtonProps> = ({ icon, label, color, onClick }) => (
-  <button
-    onClick={onClick}
-    style={{
-      display: 'flex',
-      alignItems: 'center',
-      gap: 12,
-      background: T.surface,
-      border: `1px solid ${T.border}`,
-      borderRadius: T.radius,
-      padding: '16px 18px',
-      cursor: 'pointer',
-      fontFamily: T.font,
-      textAlign: 'left',
-      width: '100%',
-      transition: 'transform 0.2s ease-out',
-    }}
-  >
-    <span
-      style={{
-        width: 36,
-        height: 36,
-        borderRadius: '50%',
-        background: `${color}22`,
-        color,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        flexShrink: 0,
-      }}
-    >
-      {icon}
+const TodayCard: React.FC<{ icon: React.ReactNode; color: string; label: string; text: string; status?: string; photo?: string; onClick: () => void }> = ({
+  icon, color, label, text, status, photo, onClick,
+}) => (
+  <button className="today-card" onClick={onClick} style={{ ['--tone' as string]: color }}>
+    <span className="today-icon">{icon}</span>
+    <span className="today-body">
+      <span className="today-label">{label}</span>
+      <span className="today-text">{text.length > 120 ? `${text.slice(0, 120)}…` : text}</span>
+      {status && <span className="today-status">{status}</span>}
     </span>
-    <span style={{ fontSize: 15, fontWeight: 500, color: T.ink }}>{label}</span>
+    {photo ? <img className="today-photo" src={photo} alt="" /> : <ChevronRight size={18} className="today-chevron" />}
   </button>
 );

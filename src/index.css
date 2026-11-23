@@ -9,66 +9,90 @@ html, body, #root {
   width: 100%;
 }
 
+/* ─── Palette « Salon » ──────────────────────────────────────
+   Canapé vert, lino bois rayé, tapis mosaïque beige et brun,
+   une touche de rouge orangé. */
 body,
+body[data-theme='salon'] {
+  --paper: #F3EADC;      /* fond : le beige du tapis */
+  --paper2: #E9DCC7;
+  --surface: #FBF6EE;
+  --ink: #33241B;        /* brun noyer */
+  --muted: #73604F;
+  --border: #DECDB3;
+  --accent: #3F5E47;     /* le canapé */
+  --accent-ink: #FBF6EE;
+  --rust: #C4532F;       /* la touche rouge orangé */
+  --wood1: #C99D69;      /* lames du lino */
+  --wood2: #B78953;
+  --wood3: #D2A877;
+  --wood-ink: #2E1F15;
+  --rug1: #E3D3BA;       /* tesselles du tapis */
+  --rug2: #8A6446;
+}
+
+body[data-theme='soiree'] {
+  color-scheme: dark;
+  --paper: #211813;
+  --paper2: #2D221B;
+  --surface: #2A2019;
+  --ink: #F2E7D8;
+  --muted: #B8A08A;
+  --border: #45362B;
+  --accent: #7FA588;
+  --accent-ink: #1C1410;
+  --rust: #E0724C;
+  --wood1: #5C412D;
+  --wood2: #4B3424;
+  --wood3: #664933;
+  --wood-ink: #F2E7D8;
+  --rug1: #3A2C22;
+  --rug2: #8A6446;
+  --context-adeux: #E0724C;
+  --context-envies: #D39A4A;
+  --context-priere: #B98597;
+  --context-instants: #7FA588;
+  --context-libre: #B5A08C;
+}
+
 body[data-theme='papier'] {
   --paper: #F7F3EC;
   --paper2: #EDE8DF;
   --surface: #FFFFFF;
   --ink: #2E2B27;
-  --muted: #8A8377;
+  --muted: #736C61;
   --border: #E4DED2;
-  --accent: #8FA895;
-}
-
-body[data-theme='sauge'] {
-  --paper: #EEF1EA;
-  --paper2: #E2E8DD;
-  --surface: #FFFFFF;
-  --ink: #28312B;
-  --muted: #6E8F72;
-  --border: #DCE3D8;
-  --accent: #6E8F72;
-}
-
-body[data-theme='nuit'] {
-  color-scheme: dark;
-  --paper: #1C1B19;
-  --paper2: #26241F;
-  --surface: #26241F;
-  --ink: #EDEAE3;
-  --muted: #948C7C;
-  --border: #3A372F;
-  --accent: #8FA895;
-}
-
-body[data-theme='douceur'] {
-  --paper: #F8F5F1;
-  --paper2: #E8DDD1;
-  --surface: #FFFFFF;
-  --ink: #5A4A42;
-  --muted: #A9938A;
-  --border: #E8DDD1;
-  --accent: #A9B79D;
+  --accent: #6F8C76;
+  --accent-ink: #FFFFFF;
+  --rust: #C4532F;
+  --wood1: #EDE8DF;
+  --wood2: #E4DED2;
+  --wood3: #F1ECE4;
+  --wood-ink: #2E2B27;
+  --rug1: #EDE8DF;
+  --rug2: #CFC6B8;
 }
 
 body {
   background: var(--paper);
   color: var(--ink);
-  font-family: -apple-system, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+  font-family: 'Figtree', -apple-system, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+  font-size: 15px;
+  line-height: 1.45;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   transition: background 0.25s ease-out, color 0.25s ease-out;
 
   /* Couleurs de modules et rayons — partagés par tous les thèmes,
      pilotables en direct par l'éditeur de couleurs. */
-  --radius: 17px;
-  --radius-md: 17px;
-  --radius-sm: 32px;
-  --context-adeux: #8CA4BD;
-  --context-envies: #D3A45C;
-  --context-priere: #A99BB5;
-  --context-instants: #8CA893;
-  --context-libre: #A69C90;
+  --radius: 18px;
+  --radius-md: 14px;
+  --radius-sm: 999px;
+  --context-adeux: #C4532F;    /* rouge orangé */
+  --context-envies: #B37A2C;   /* miel, comme le bois */
+  --context-priere: #85596A;   /* vieux rose brun */
+  --context-instants: #4E6E55; /* vert canapé, plus clair */
+  --context-libre: #8F7A66;
 }
 
 /* iOS Safari zoome automatiquement (et dézoome mal) sur tout champ de
@@ -77,4 +101,14 @@ body {
    gênant sur mobile. */
 input, select, textarea {
   font-size: 16px !important;
+}
+
+h1, h2, h3, .display {
+  font-family: 'Bricolage Grotesque', 'Figtree', -apple-system, sans-serif;
+  letter-spacing: -0.01em;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }

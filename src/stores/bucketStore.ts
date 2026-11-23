@@ -1,3 +1,4 @@
+import { upsert, type Row } from '../services/api';
 import { create } from 'zustand';
 import { BucketItem } from '../types';
 import { getBucketItems, createBucketItem, toggleBucketItemComplete, updateBucketItemTitle, deleteBucketItem } from '../services/envieService';
@@ -12,6 +13,8 @@ interface BucketStore {
   toggleComplete: (id: string) => Promise<void>;
   updateTitle: (id: string, title: string) => Promise<void>;
   deleteItem: (id: string) => Promise<void>;
+  /** Remet une envie dans l'état exact d'une copie (pour « Annuler »). */
+  restoreItem: (item: BucketItem) => void;
 }
 
 export const useBucketStore = create<BucketStore>((set, get) => ({
@@ -78,5 +81,14 @@ export const useBucketStore = create<BucketStore>((set, get) => ({
       set({ items: previous, error: e.message || 'Erreur lors de la suppression' });
       throw e;
     }
+  },
+
+  restoreItem: (item) => {
+    upsert('bucket_items', item as unknown as Row);
+    set((state) => ({
+      items: state.items.some((i) => i.id === item.id)
+        ? state.items.map((i) => (i.id === item.id ? item : i))
+        : [item, ...state.items],
+    }));
   },
 }));

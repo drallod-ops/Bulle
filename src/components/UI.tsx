@@ -1,4 +1,5 @@
 import React from 'react';
+import { X } from 'lucide-react';
 import { T } from '../theme';
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
@@ -20,8 +21,8 @@ export const Button: React.FC<ButtonProps> = ({
 }) => {
   const variants = {
     primary: {
-      background: disabled ? T.paper2 : T.ink,
-      color: disabled ? T.muted : T.paper,
+      background: disabled ? T.paper2 : T.sage,
+      color: disabled ? T.muted : 'var(--accent-ink)',
     },
     secondary: {
       background: T.paper2,
@@ -34,9 +35,9 @@ export const Button: React.FC<ButtonProps> = ({
   };
 
   const sizes = {
-    sm: { padding: '8px 12px', fontSize: 12 },
-    md: { padding: '12px 16px', fontSize: 14 },
-    lg: { padding: '16px 20px', fontSize: 16 },
+    sm: { padding: '9px 14px', fontSize: 14 },
+    md: { padding: '13px 16px', fontSize: 15 },
+    lg: { padding: '16px 20px', fontSize: 17 },
   };
 
   return (
@@ -78,7 +79,7 @@ export const Card: React.FC<CardProps> = ({ children, onClick, onContextMenu, st
       border: `1px solid ${T.border}`,
       borderRadius: T.radius,
       padding: 18,
-      boxShadow: '0 2px 8px rgba(0,0,0,0.05), 0 1px 3px rgba(0,0,0,0.04)',
+      boxShadow: '0 1px 0 rgba(51,36,27,0.06)',
       cursor: onClick ? 'pointer' : 'default',
       transition: 'all 0.2s ease',
       ...style,
@@ -106,9 +107,10 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }
         left: 0,
         right: 0,
         bottom: 0,
-        background: 'rgba(0,0,0,0.5)',
+        background: 'rgba(33,24,19,0.55)',
         display: 'flex',
         alignItems: 'flex-end',
+        justifyContent: 'center',
         zIndex: 1000,
       }}
       onClick={onClose}
@@ -117,14 +119,23 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }
         onClick={(e) => e.stopPropagation()}
         style={{
           background: T.paper,
+          color: T.ink,
           width: '100%',
-          borderRadius: `${T.radius}px ${T.radius}px 0 0`,
-          padding: 20,
-          maxHeight: '90vh',
+          maxWidth: 560,
+          borderRadius: `${T.radius} ${T.radius} 0 0`,
+          padding: '20px 20px calc(20px + env(safe-area-inset-bottom))',
+          maxHeight: '90dvh',
           overflow: 'auto',
         }}
+        role="dialog"
+        aria-modal="true"
       >
-        {title && <h2 style={{ margin: '0 0 16px 0', fontSize: 18, fontWeight: 600 }}>{title}</h2>}
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 16 }}>
+          {title ? <h2 style={{ margin: 0, fontSize: 21, fontWeight: 700 }}>{title}</h2> : <span />}
+          <button onClick={onClose} aria-label="Fermer" className="icon-btn" style={{ marginTop: -2 }}>
+            <X size={20} />
+          </button>
+        </div>
         {children}
       </div>
     </div>
@@ -142,7 +153,7 @@ export const ErrorBanner: React.FC<{ message: string }> = ({ message }) => (
       border: '1px solid #F5C6C0',
       borderRadius: 10,
       padding: '10px 14px',
-      fontSize: 12.5,
+      fontSize: 13.5,
       color: '#C0392B',
     }}
   >

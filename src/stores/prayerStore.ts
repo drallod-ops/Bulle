@@ -1,3 +1,4 @@
+import { upsert, type Row } from '../services/api';
 import { create } from 'zustand';
 import { PrayerTopic } from '../types';
 import { getPrayerTopics, createPrayerTopic, markPrayerAnswered, updatePrayerTopicTitle, archiveTopicNow, deletePrayerTopic } from '../services/prayerService';
@@ -14,6 +15,8 @@ interface PrayerStore {
   updateTitle: (id: string, title: string) => Promise<void>;
   archiveNow: (id: string) => Promise<void>;
   deleteTopic: (id: string) => Promise<void>;
+  /** Remet un sujet dans l'état exact d'une copie (pour « Annuler »). */
+  restoreTopic: (topic: PrayerTopic) => void;
 }
 
 export const usePrayerStore = create<PrayerStore>((set, get) => ({
@@ -103,5 +106,14 @@ export const usePrayerStore = create<PrayerStore>((set, get) => ({
       set({ topics: previous, error: e.message || 'Erreur lors de la suppression' });
       throw e;
     }
+  },
+
+  restoreTopic: (topic) => {
+    upsert('prayer_topics', { ...topic, answered_at: topic.answered_at ?? null, answered_by: topic.answered_by ?? null, archived_at: topic.archived_at ?? null } as unknown as Row);
+    set((state) => ({
+      topics: state.topics.some((t) => t.id === topic.id)
+        ? state.topics.map((t) => (t.id === topic.id ? topic : t))
+        : [topic, ...state.topics],
+    }));
   },
 }));

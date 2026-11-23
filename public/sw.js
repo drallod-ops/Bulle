@@ -3,7 +3,7 @@
 // - Fichiers de l'app (JS, CSS, icônes) : cache d'abord, mis à jour en arrière-plan.
 // - Appels à l'Apps Script et photos Drive : jamais mis en cache ici
 //   (l'app garde déjà sa propre copie des données).
-const CACHE = 'bulle-v1';
+const CACHE = 'bulle-v2';
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE).then((c) => c.addAll(['./', './index.html', './manifest.webmanifest'])).then(() => self.skipWaiting()));

@@ -11,6 +11,7 @@ import etSiRaw from '../../content/etsi.txt?raw';
 import defisRaw from '../../content/defis.txt?raw';
 import tuPreferesRaw from '../../content/tupreferes.txt?raw';
 import chronoMotsRaw from '../../content/chronomots.txt?raw';
+import versetsRaw from '../../content/versets.txt?raw';
 
 // Une ligne = une entrée. Lignes vides ignorées.
 function parseLines(raw: string): string[] {
@@ -38,76 +39,78 @@ function parseThemedBlocks(raw: string): Record<string, string[]> {
 }
 
 // ─── À deux : les expériences ────────────────────────────────────
-// scored : le jeu propose de compter les points (versus ou coopération).
-export const DEFAULT_GAMES: (Game & { scored?: 'versus' | 'coop' })[] = [
+// duree : pour l'écran « Vous avez combien de temps ? ».
+export type Duree = 'rapide' | 'moyen' | 'soiree';
+export const DUREE_LABELS: Record<Duree, string> = { rapide: '2 minutes', moyen: '10 minutes', soiree: 'Une soirée' };
+
+export const DEFAULT_GAMES: (Game & { duree: Duree[]; distance?: boolean; scored?: 'versus' | 'coop' })[] = [
   {
-    id: 'je-pense',
-    name: 'Je pense à...',
-    description: "L'un pense à quelque chose, l'autre devine en un minimum de questions.",
-    icon: 'Brain',
+    id: 'question-du-jour',
+    name: 'La question du jour',
+    description: 'Chacun répond de son côté. Les réponses se dévoilent quand vous avez répondu tous les deux.',
+    icon: 'MessageCircleHeart',
     enabled: true,
-    scored: 'versus',
+    duree: ['rapide'],
+    distance: true,
   },
   {
-    id: 'photo-mystere',
-    name: 'Photo Mystère',
-    description: 'Une photo floue de vos Instants se dévoile peu à peu. Qui la reconnaît le plus vite ?',
-    icon: 'Eye',
+    id: 'defi-semaine',
+    name: 'Le défi de la semaine',
+    description: 'Un petit défi à relever ensemble avant dimanche.',
+    icon: 'Target',
     enabled: true,
-    scored: 'versus',
+    duree: ['rapide'],
+    distance: true,
   },
   {
     id: 'qui-connait-mieux',
     name: 'À propos de toi',
-    description: "Une question, deux réponses en secret, puis on compare. Points en option.",
+    description: 'Des questions pour mieux se connaître, et des « Et si… » pour rêver.',
     icon: 'Users',
     enabled: true,
-    scored: 'versus',
-  },
-  {
-    id: 'chronologie',
-    name: 'Chronologie',
-    description: 'Deux de vos Instants : lequel est arrivé en premier ?',
-    icon: 'CalendarClock',
-    enabled: true,
-    scored: 'versus',
+    duree: ['moyen', 'soiree'],
   },
   {
     id: 'tu-preferes',
-    name: 'Tu préfères...',
+    name: 'Tu préfères…',
     description: 'Chacun choisit en secret. Combien de fois êtes-vous en phase ?',
     icon: 'Split',
     enabled: true,
+    duree: ['rapide', 'moyen'],
     scored: 'coop',
+  },
+  {
+    id: 'verset',
+    name: 'Verset à compléter',
+    description: 'Retrouvez ensemble le mot manquant ou la référence.',
+    icon: 'BookOpen',
+    enabled: true,
+    duree: ['rapide', 'moyen'],
+    scored: 'coop',
+  },
+  {
+    id: 'souvenirs',
+    name: 'Nos souvenirs',
+    description: 'Photo mystère, chronologie ou « Où était-ce ? », avec vos Instants.',
+    icon: 'Images',
+    enabled: true,
+    duree: ['moyen', 'soiree'],
+  },
+  {
+    id: 'je-pense',
+    name: 'Je pense à…',
+    description: "L'un pense à quelque chose, l'autre devine avec des questions fermées.",
+    icon: 'Brain',
+    enabled: true,
+    duree: ['moyen', 'soiree'],
   },
   {
     id: 'chrono-mots',
     name: 'Chrono-mots',
-    description: "60 secondes pour faire deviner un maximum de mots, sans les dire.",
+    description: 'Faire deviner un maximum de mots avant la fin du sablier.',
     icon: 'Timer',
     enabled: true,
-    scored: 'versus',
-  },
-  {
-    id: 'et-si',
-    name: 'Et si...',
-    description: 'Des questions hypothétiques, sans bonne réponse.',
-    icon: 'HelpCircle',
-    enabled: true,
-  },
-  {
-    id: 'defis',
-    name: 'Défis',
-    description: 'Un petit défi à relever à deux, maintenant ou bientôt.',
-    icon: 'Target',
-    enabled: true,
-  },
-  {
-    id: 'le-hasard',
-    name: 'Le hasard',
-    description: 'Un instant, une envie ou une prière, piochés au hasard.',
-    icon: 'Shuffle',
-    enabled: true,
+    duree: ['moyen', 'soiree'],
   },
 ];
 
@@ -132,7 +135,28 @@ export const TU_PREFERES: [string, string][] = parseLines(tuPreferesRaw)
   .map((l) => l.split('|').map((x) => x.trim()))
   .filter((p) => p.length === 2 && p[0] && p[1]) as [string, string][];
 
-export const CHRONO_MOTS = parseLines(chronoMotsRaw);
+// Mots classés par catégorie (« # Catégorie » dans le fichier).
+export const CHRONO_CATEGORIES: Record<string, string[]> = (() => {
+  const out: Record<string, string[]> = {};
+  let current = 'Divers';
+  parseLines(chronoMotsRaw).forEach((line) => {
+    if (line.startsWith('#')) current = line.slice(1).trim();
+    else (out[current] ||= []).push(line);
+  });
+  return out;
+})();
+export const CHRONO_MOTS = Object.values(CHRONO_CATEGORIES).flat();
+
+export interface Verset {
+  ref: string;
+  text: string;
+  word: string;
+}
+export const VERSETS: Verset[] = parseLines(versetsRaw)
+  .filter((l) => !l.startsWith('#'))
+  .map((l) => l.split('|').map((x) => x.trim()))
+  .filter((p) => p.length === 3 && p[1].includes(p[2]))
+  .map(([ref, text, word]) => ({ ref, text, word }));
 
 // Conservé pour compatibilité (utilisé comme secours dans le modal de jeu)
 export const GAME_PROMPTS: Record<string, string[]> = {

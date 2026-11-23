@@ -69,7 +69,7 @@ export const ColorEditor: React.FC<ColorEditorProps> = ({ theme, onClose }) => {
       >
         <div>
           <h1 style={{ fontSize: 18, fontWeight: 700, margin: 0, color: T.ink }}>Éditeur de couleurs</h1>
-          <p style={{ fontSize: 12, color: T.muted, margin: '2px 0 0 0' }}>Thème actif : {THEME_LABELS[theme]}</p>
+          <p style={{ fontSize: 13, color: T.muted, margin: '2px 0 0 0' }}>Thème actif : {THEME_LABELS[theme]}</p>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <button onClick={handleReset} title="Réinitialiser" style={iconBtnStyle}>
@@ -132,7 +132,7 @@ export const ColorEditor: React.FC<ColorEditorProps> = ({ theme, onClose }) => {
             border: `1px solid ${T.border}`,
           }}
         >
-          <p style={{ fontSize: 12, color: T.muted, margin: '0 0 10px 0' }}>Aperçu en direct</p>
+          <p style={{ fontSize: 13, color: T.muted, margin: '0 0 10px 0' }}>Aperçu en direct</p>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
             {(Object.keys(CONTEXT_LABELS) as (keyof typeof DEFAULT_CONTEXT_COLORS)[]).map((key) => (
               <span
@@ -140,7 +140,7 @@ export const ColorEditor: React.FC<ColorEditorProps> = ({ theme, onClose }) => {
                 style={{
                   background: CONTEXT[key],
                   color: '#fff',
-                  fontSize: 11,
+                  fontSize: 13,
                   fontWeight: 600,
                   padding: '5px 12px',
                   borderRadius: 20,
@@ -152,7 +152,7 @@ export const ColorEditor: React.FC<ColorEditorProps> = ({ theme, onClose }) => {
           </div>
           <div style={{ background: T.surface, borderRadius: T.radiusMd, padding: 14, border: `1px solid ${T.border}` }}>
             <p style={{ fontSize: 14, color: T.ink, margin: 0 }}>Voici à quoi ressemble une carte.</p>
-            <p style={{ fontSize: 12, color: T.muted, margin: '6px 0 0 0' }}>Et un texte discret en dessous.</p>
+            <p style={{ fontSize: 13, color: T.muted, margin: '6px 0 0 0' }}>Et un texte discret en dessous.</p>
           </div>
         </div>
       </div>
@@ -222,7 +222,7 @@ const ColorRow: React.FC<{ label: string; value: string; onChange: (v: string) =
           borderRadius: 8,
           padding: '6px 8px',
           fontFamily: 'monospace',
-          fontSize: 12.5,
+          fontSize: 13.5,
           color: T.ink,
           background: T.paper,
           textAlign: 'center',
@@ -253,6 +253,6 @@ const RadiusRow: React.FC<{ label: string; value: number; onChange: (v: number) 
       onChange={(e) => onChange(Number(e.target.value))}
       style={{ width: 100 }}
     />
-    <span style={{ width: 40, textAlign: 'right', fontSize: 12.5, color: T.muted, fontFamily: 'monospace' }}>{value}px</span>
+    <span style={{ width: 40, textAlign: 'right', fontSize: 13.5, color: T.muted, fontFamily: 'monospace' }}>{value}px</span>
   </div>
 );

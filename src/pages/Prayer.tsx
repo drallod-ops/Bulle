@@ -1,46 +1,37 @@
-import { AuthorTag } from '../components/AuthorTag';
-import React, { useEffect, useState } from 'react';
-import { Plus, Trash2, Check, Archive, Pencil, MoreVertical } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Plus, Trash2, Archive, Pencil, MoreHorizontal, Check, BookHeart } from 'lucide-react';
 import { usePrayerStore } from '../stores/prayerStore';
-import { Card, Button, Modal, Divider, ErrorBanner, Spinner, ActionSheet, LongPressWrapper } from '../components/UI';
+import { Card, Button, Modal, ErrorBanner, Spinner, ActionSheet } from '../components/UI';
+import { SwipeRow } from '../components/Feedback';
+import { AuthorTag } from '../components/AuthorTag';
+import { showUndo } from '../stores/undoStore';
 import { PrayerTopic } from '../types';
-import { getRandomPrayerTopics, isPrayerTopicArchived } from '../services/prayerService';
-import { T, CONTEXT } from '../theme';
+import { isPrayerTopicArchived } from '../services/prayerService';
+import { shuffle } from '../services/random';
+import { durationBetween, formatDate, monthLabel } from '../services/time';
+import { CONTEXT } from '../theme';
 
 interface PrayerPageProps {
   onCreateMemoryFor?: (topic: PrayerTopic) => void;
 }
 
-const inputStyle: React.CSSProperties = {
-  border: `1px solid ${T.border}`,
-  borderRadius: T.radius,
-  padding: '12px 16px',
-  fontFamily: T.font,
-  fontSize: 14,
-  outline: 'none',
-  color: T.ink,
-  background: T.surface,
-};
-
 export const PrayerPage: React.FC<PrayerPageProps> = ({ onCreateMemoryFor }) => {
-  const { topics, loading, error, loadTopics, addToPortTopic, addRecognitionTopic, markAnswered, updateTitle, archiveNow, deleteTopic } =
+  const { topics, loading, error, loadTopics, addToPortTopic, addRecognitionTopic, markAnswered, updateTitle, archiveNow, deleteTopic, restoreTopic } =
     usePrayerStore();
 
   useEffect(() => {
     loadTopics();
   }, [loadTopics]);
 
-  const enCoursTopics = topics.filter((t) => t.category === 'toport');
-  const recognitionTopics = topics.filter((t) => t.category === 'recognition' && !isPrayerTopicArchived(t));
-  const archivedTopics = topics.filter((t) => t.category === 'recognition' && isPrayerTopicArchived(t));
+  const enCours = topics.filter((t) => t.category === 'toport');
+  const recognition = topics.filter((t) => t.category === 'recognition' && !isPrayerTopicArchived(t));
+  const answeredAll = topics.filter((t) => t.category === 'recognition');
 
   const [newTitle, setNewTitle] = useState('');
   const [category, setCategory] = useState<'toport' | 'recognition'>('toport');
   const [showAdd, setShowAdd] = useState(false);
-  const [showArchive, setShowArchive] = useState(false);
-  const [prayTogether, setPrayTogether] = useState(false);
-  const [selectedTopics, setSelectedTopics] = useState<PrayerTopic[]>([]);
-  const [justAnswered, setJustAnswered] = useState<PrayerTopic | null>(null);
+  const [showHistory, setShowHistory] = useState(false);
+  const [praying, setPraying] = useState(false);
   const [actionTopic, setActionTopic] = useState<PrayerTopic | null>(null);
   const [editTopic, setEditTopic] = useState<PrayerTopic | null>(null);
   const [editTitle, setEditTitle] = useState('');
@@ -53,136 +44,122 @@ export const PrayerPage: React.FC<PrayerPageProps> = ({ onCreateMemoryFor }) => 
     setShowAdd(false);
   };
 
-  const handleMarkAnswered = async (topic: PrayerTopic) => {
+  const answer = async (topic: PrayerTopic) => {
     await markAnswered(topic.id);
-    setJustAnswered(topic);
+    showUndo('Exaucé, rangé dans la reconnaissance.', () => restoreTopic(topic));
+  };
+  const archive = async (topic: PrayerTopic) => {
+    await archiveNow(topic.id);
+    showUndo("Rangé dans l'historique.", () => restoreTopic(topic));
+  };
+  const remove = async (topic: PrayerTopic) => {
+    await deleteTopic(topic.id);
+    showUndo('Sujet supprimé.', () => restoreTopic(topic));
   };
 
-  const handlePrayTogether = () => {
-    const pool = [...enCoursTopics, ...recognitionTopics];
-    if (pool.length > 0) {
-      setSelectedTopics(getRandomPrayerTopics(pool, Math.min(3, pool.length)));
-      setPrayTogether(true);
-    }
-  };
-
-  const openEdit = (topic: PrayerTopic) => {
-    setEditTopic(topic);
-    setEditTitle(topic.title);
-  };
-
-  const handleSaveEdit = async () => {
+  const saveEdit = async () => {
     if (!editTopic || !editTitle.trim()) return;
     await updateTitle(editTopic.id, editTitle.trim());
     setEditTopic(null);
   };
 
-  const allTopics = enCoursTopics.length + recognitionTopics.length;
-
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16, paddingBottom: 80 }}>
+    <div className="stack page">
       {error && <ErrorBanner message={error} />}
 
-      {allTopics > 0 && (
-        <Button full onClick={handlePrayTogether} style={{ background: CONTEXT.priere }}>
-          Prier ensemble
-        </Button>
+      {enCours.length + recognition.length > 0 && (
+        <button className="big-action" style={{ background: CONTEXT.priere }} onClick={() => setPraying(true)}>
+          <span className="big-action-title">Prier ensemble</span>
+          <span className="big-action-sub">Un sujet à la fois, en grand</span>
+        </button>
       )}
 
       {showAdd ? (
         <Card style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <Button size="sm" variant={category === 'toport' ? 'primary' : 'ghost'} onClick={() => setCategory('toport')} style={category === 'toport' ? { background: CONTEXT.priere } : {}}>
-              Entre ses mains
-            </Button>
-            <Button size="sm" variant={category === 'recognition' ? 'primary' : 'ghost'} onClick={() => setCategory('recognition')} style={category === 'recognition' ? { background: CONTEXT.priere } : {}}>
-              Reconnaissance
-            </Button>
+          <div className="segmented">
+            <button className={category === 'toport' ? 'on' : ''} onClick={() => setCategory('toport')}>À porter</button>
+            <button className={category === 'recognition' ? 'on' : ''} onClick={() => setCategory('recognition')}>Un merci</button>
           </div>
-          <input type="text" placeholder="Ajouter un sujet..." value={newTitle} onChange={(e) => setNewTitle(e.target.value)} autoFocus style={inputStyle} />
-          <div style={{ display: 'flex', gap: 8 }}>
-            <Button size="sm" onClick={handleAdd} style={{ background: CONTEXT.priere }}>Ajouter</Button>
-            <Button size="sm" variant="ghost" onClick={() => { setNewTitle(''); setShowAdd(false); }}>Annuler</Button>
+          <input
+            className="field"
+            type="text"
+            placeholder={category === 'toport' ? 'Pour quoi voulez-vous prier ?' : 'Pour quoi dites-vous merci ?'}
+            value={newTitle}
+            onChange={(e) => setNewTitle(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
+            autoFocus
+          />
+          <div className="row">
+            <Button variant="secondary" full onClick={() => setShowAdd(false)}>Annuler</Button>
+            <Button full onClick={handleAdd} style={{ background: CONTEXT.priere, color: '#FBF6EE' }}>Ajouter</Button>
           </div>
         </Card>
       ) : (
-        <Button full onClick={() => setShowAdd(true)} style={{ background: CONTEXT.priere }}>
-          <Plus size={16} style={{ marginRight: 8 }} />
-          Ajouter un sujet
-        </Button>
+        <button className="add-line" onClick={() => setShowAdd(true)}>
+          <Plus size={18} /> Ajouter un sujet
+        </button>
       )}
 
       {loading && topics.length === 0 ? (
-        <Spinner label="Chargement des prières..." />
+        <Spinner />
       ) : (
         <>
-          {enCoursTopics.length > 0 && (
-            <div>
-              <h3 style={{ fontSize: 14, fontWeight: 600, color: T.muted, margin: '0 0 12px 0' }}>Entre ses mains</h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {enCoursTopics.map((topic) => (
-                  <Card key={topic.id} onContextMenu={(e) => { e.preventDefault(); setActionTopic(topic); }} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <button
-                      onClick={() => handleMarkAnswered(topic)}
-                      title="Marquer comme exaucé"
-                      style={{ width: 24, height: 24, borderRadius: '50%', border: `2px solid ${CONTEXT.priere}`, background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
-                    >
-                      <Check size={14} color={CONTEXT.priere} style={{ opacity: 0 }} />
-                    </button>
-                    <LongPressWrapper onLongPress={() => setActionTopic(topic)}>
-                      <div style={{ flex: 1 }}>
-                        <p style={{ fontSize: 14, margin: 0, color: T.ink }}>{topic.title}</p>
-                        <AuthorTag author={topic.author} />
-                      </div>
-                    </LongPressWrapper>
-                    <button onClick={() => setActionTopic(topic)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, flexShrink: 0 }} title="Plus d'actions">
-                      <MoreVertical size={16} color={T.muted} />
-                    </button>
-                  </Card>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {recognitionTopics.length > 0 && (
-            <div>
-              <h3 style={{ fontSize: 14, fontWeight: 600, color: T.muted, margin: '0 0 12px 0' }}>Reconnaissance</h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {recognitionTopics.map((topic) => (
-                  <Card key={topic.id} onContextMenu={(e) => { e.preventDefault(); setActionTopic(topic); }} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <div style={{ width: 24, height: 24, borderRadius: '50%', background: CONTEXT.priere, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <Check size={14} color="#fff" />
+          {enCours.length > 0 && (
+            <section className="stack-sm">
+              <h2 className="section-title">Entre ses mains</h2>
+              {enCours.map((topic) => (
+                <SwipeRow key={topic.id} onSwipeRight={() => answer(topic)} rightLabel="Exaucé" rightColor={CONTEXT.priere} onSwipeLeft={() => setActionTopic(topic)}>
+                  <div className="item">
+                    <button className="check" style={{ borderColor: CONTEXT.priere }} onClick={() => answer(topic)} aria-label="Marquer comme exaucé" />
+                    <div className="item-body">
+                      <p className="item-title">{topic.title}</p>
+                      <p className="item-meta">
+                        Porté depuis {durationBetween(topic.created_at, new Date().toISOString())}
+                        <AuthorTag author={topic.author} inline />
+                      </p>
                     </div>
-                    <LongPressWrapper onLongPress={() => setActionTopic(topic)}>
-                      <div style={{ flex: 1 }}>
-                        <p style={{ fontSize: 14, margin: 0, color: T.ink }}>{topic.title}</p>
-                        <AuthorTag author={topic.author} doneBy={topic.answered_by} doneLabel="exaucé, coché par" />
-                      </div>
-                    </LongPressWrapper>
-                    <button onClick={() => setActionTopic(topic)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, flexShrink: 0 }} title="Plus d'actions">
-                      <MoreVertical size={16} color={T.muted} />
-                    </button>
-                  </Card>
-                ))}
-              </div>
-            </div>
+                    <button className="icon-btn" onClick={() => setActionTopic(topic)} aria-label="Options"><MoreHorizontal size={18} /></button>
+                  </div>
+                </SwipeRow>
+              ))}
+            </section>
           )}
 
-          {allTopics === 0 && (
-            <Card style={{ textAlign: 'center', padding: 40, color: T.muted }}>
-              Vous pouvez déposer ici ce que vous portez ensemble.
-            </Card>
+          {recognition.length > 0 && (
+            <section className="stack-sm">
+              <h2 className="section-title">Reconnaissance</h2>
+              {recognition.map((topic) => (
+                <SwipeRow key={topic.id} onSwipeRight={() => archive(topic)} rightLabel="Ranger" rightColor={CONTEXT.libre} onSwipeLeft={() => setActionTopic(topic)}>
+                  <div className="item">
+                    <span className="check done" style={{ background: CONTEXT.priere, borderColor: CONTEXT.priere }}><Check size={13} /></span>
+                    <div className="item-body">
+                      <p className="item-title">{topic.title}</p>
+                      <p className="item-meta">
+                        {topic.answered_at ? `Exaucé le ${formatDate(topic.answered_at, false)}` : 'Merci'}
+                        {topic.answered_at && topic.created_at < topic.answered_at && `, après ${durationBetween(topic.created_at, topic.answered_at)}`}
+                      </p>
+                      {onCreateMemoryFor && (
+                        <button className="link-btn" style={{ color: CONTEXT.priere, padding: '4px 0', textAlign: 'left' }} onClick={() => onCreateMemoryFor(topic)}>
+                          + Garder un instant
+                        </button>
+                      )}
+                    </div>
+                    <button className="icon-btn" onClick={() => setActionTopic(topic)} aria-label="Options"><MoreHorizontal size={18} /></button>
+                  </div>
+                </SwipeRow>
+              ))}
+            </section>
+          )}
+
+          {topics.length === 0 && (
+            <p className="empty">Déposez ici ce que vous portez ensemble. Glissez un sujet vers la droite quand la prière est exaucée.</p>
           )}
         </>
       )}
 
-      {archivedTopics.length > 0 && (
-        <button
-          onClick={() => setShowArchive(true)}
-          style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'none', border: 'none', cursor: 'pointer', color: T.muted, fontSize: 12, fontFamily: T.font, padding: '4px 0' }}
-        >
-          <Archive size={14} />
-          {archivedTopics.length} sujet{archivedTopics.length > 1 ? 's' : ''} archivé{archivedTopics.length > 1 ? 's' : ''} (30j+)
+      {answeredAll.length > 0 && (
+        <button className="add-line quiet" onClick={() => setShowHistory(true)}>
+          <BookHeart size={18} /> Journal de reconnaissance ({answeredAll.length})
         </button>
       )}
 
@@ -192,71 +169,106 @@ export const PrayerPage: React.FC<PrayerPageProps> = ({ onCreateMemoryFor }) => 
         items={
           actionTopic
             ? [
-                { key: 'edit', icon: <Pencil size={16} />, label: 'Modifier', onClick: () => openEdit(actionTopic) },
-                ...(actionTopic.category === 'recognition'
-                  ? [{ key: 'archive', icon: <Archive size={16} />, label: 'Archiver maintenant', onClick: () => archiveNow(actionTopic.id) }]
-                  : []),
-                { key: 'delete', icon: <Trash2 size={16} color="#C0392B" />, label: 'Supprimer', danger: true, onClick: () => deleteTopic(actionTopic.id) },
+                { key: 'edit', icon: <Pencil size={16} />, label: 'Modifier', onClick: () => { setEditTopic(actionTopic); setEditTitle(actionTopic.title); } },
+                ...(actionTopic.category === 'toport'
+                  ? [{ key: 'answer', icon: <Check size={16} />, label: 'Exaucé', onClick: () => answer(actionTopic) }]
+                  : [{ key: 'archive', icon: <Archive size={16} />, label: "Ranger dans l'historique", onClick: () => archive(actionTopic) }]),
+                { key: 'delete', icon: <Trash2 size={16} color="var(--rust)" />, label: 'Supprimer', danger: true, onClick: () => remove(actionTopic) },
               ]
             : []
         }
       />
 
       <Modal isOpen={!!editTopic} onClose={() => setEditTopic(null)} title="Modifier le sujet">
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <input type="text" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} autoFocus style={inputStyle} />
-          <div style={{ display: 'flex', gap: 8 }}>
-            <Button full variant="secondary" onClick={() => setEditTopic(null)}>Annuler</Button>
-            <Button full onClick={handleSaveEdit} style={{ background: CONTEXT.priere }}>Enregistrer</Button>
-          </div>
+        <div className="stack">
+          <input className="field" type="text" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} autoFocus />
+          <Button full onClick={saveEdit} style={{ background: CONTEXT.priere, color: '#FBF6EE' }}>Enregistrer</Button>
         </div>
       </Modal>
 
-      <Modal isOpen={prayTogether} onClose={() => setPrayTogether(false)} title="Prier ensemble">
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {selectedTopics.map((topic) => (
-            <div key={topic.id}>
-              <p style={{ fontSize: 11, color: T.muted, margin: '0 0 2px 0', textTransform: 'uppercase' }}>
-                {topic.category === 'toport' ? 'Entre ses mains' : 'Reconnaissance'}
+      <Modal isOpen={showHistory} onClose={() => setShowHistory(false)} title="Journal de reconnaissance">
+        <GratitudeJournal topics={answeredAll} />
+      </Modal>
+
+      {praying && <PrayTogether topics={[...enCours, ...recognition]} onAnswer={answer} onClose={() => setPraying(false)} />}
+    </div>
+  );
+};
+
+// ─── Journal : une frise des prières exaucées ────────────────
+const GratitudeJournal: React.FC<{ topics: PrayerTopic[] }> = ({ topics }) => {
+  const groups = useMemo(() => {
+    const sorted = [...topics].sort((a, b) => (b.answered_at || b.created_at).localeCompare(a.answered_at || a.created_at));
+    const map = new Map<string, PrayerTopic[]>();
+    sorted.forEach((t) => {
+      const key = monthLabel(t.answered_at || t.created_at);
+      map.set(key, [...(map.get(key) || []), t]);
+    });
+    return [...map.entries()];
+  }, [topics]);
+
+  return (
+    <div className="timeline">
+      {groups.map(([month, items]) => (
+        <section key={month}>
+          <h3 className="timeline-month">{month}</h3>
+          {items.map((t) => (
+            <div key={t.id} className="timeline-item">
+              <span className="timeline-dot" style={{ background: CONTEXT.priere }} />
+              <p className="item-title">{t.title}</p>
+              <p className="item-meta">
+                {t.answered_at ? `Exaucé le ${formatDate(t.answered_at)}` : formatDate(t.created_at)}
+                {t.answered_at && t.created_at < t.answered_at ? `, porté pendant ${durationBetween(t.created_at, t.answered_at)}` : ''}
+                {t.answered_by ? `. Coché par ${t.answered_by}.` : ''}
               </p>
-              <p style={{ fontSize: 14, fontWeight: 500, margin: 0, color: T.ink }}>{topic.title}</p>
-              {topic.description && <p style={{ fontSize: 12, color: T.muted, margin: '4px 0 0 0' }}>{topic.description}</p>}
             </div>
           ))}
-          <Divider />
-          <Button full onClick={() => setPrayTogether(false)}>Fermer</Button>
-        </div>
-      </Modal>
+        </section>
+      ))}
+    </div>
+  );
+};
 
-      <Modal isOpen={!!justAnswered} onClose={() => setJustAnswered(null)} title="Prière exaucée 🙏">
-        {justAnswered && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <p style={{ fontSize: 15, margin: 0, color: T.ink }}>"{justAnswered.title}" a rejoint votre reconnaissance.</p>
-            <p style={{ fontSize: 13, color: T.muted, margin: 0 }}>Envie d'en garder un instant ?</p>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <Button full variant="secondary" onClick={() => setJustAnswered(null)}>Plus tard</Button>
-              <Button full style={{ background: CONTEXT.priere }} onClick={() => { onCreateMemoryFor?.(justAnswered); setJustAnswered(null); }}>
-                Créer l'instant
-              </Button>
-            </div>
-          </div>
+// ─── Prier ensemble : plein écran, un sujet à la fois ────────
+const PrayTogether: React.FC<{ topics: PrayerTopic[]; onAnswer: (t: PrayerTopic) => void; onClose: () => void }> = ({ topics, onAnswer, onClose }) => {
+  const [order] = useState(() => [...shuffle(topics.filter((t) => t.category === 'toport')), ...shuffle(topics.filter((t) => t.category !== 'toport'))]);
+  const [i, setI] = useState(0);
+  const done = i >= order.length;
+  const topic = order[i];
+
+  return (
+    <div className="pray-screen" role="dialog" aria-modal="true">
+      <div className="pray-top">
+        <span className="muted">{done ? '' : `${i + 1} sur ${order.length}`}</span>
+        <button className="link-btn" style={{ color: 'inherit' }} onClick={onClose}>Fermer</button>
+      </div>
+      <div className="pray-center">
+        {done ? (
+          <>
+            <p className="pray-title">Amen.</p>
+            <p className="pray-sub">Merci d'avoir pris ce temps ensemble.</p>
+          </>
+        ) : (
+          <>
+            <p className="pray-kind">{topic.category === 'toport' ? 'Nous te confions' : 'Merci pour'}</p>
+            <p className="pray-title">{topic.title}</p>
+            {topic.description && <p className="pray-sub">{topic.description}</p>}
+            {topic.category === 'toport' && <p className="pray-sub">Porté depuis {durationBetween(topic.created_at, new Date().toISOString())}</p>}
+          </>
         )}
-      </Modal>
-
-      <Modal isOpen={showArchive} onClose={() => setShowArchive(false)} title="Archives">
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {archivedTopics.map((topic) => (
-            <Card key={topic.id} style={{ opacity: 0.7 }}>
-              <p style={{ fontSize: 14, margin: 0, color: T.ink }}>{topic.title}</p>
-              {topic.answered_at && (
-                <p style={{ fontSize: 11, color: T.muted, margin: '4px 0 0 0' }}>
-                  Exaucé le {new Date(topic.answered_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
-                </p>
-              )}
-            </Card>
-          ))}
-        </div>
-      </Modal>
+      </div>
+      <div className="pray-actions">
+        {done ? (
+          <Button full onClick={onClose}>Terminer</Button>
+        ) : (
+          <>
+            {topic.category === 'toport' && (
+              <Button variant="secondary" full onClick={() => { onAnswer(topic); setI(i + 1); }}>Exaucé</Button>
+            )}
+            <Button full onClick={() => setI(i + 1)}>{i + 1 === order.length ? 'Conclure' : 'Suivant'}</Button>
+          </>
+        )}
+      </div>
     </div>
   );
 };

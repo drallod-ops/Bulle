@@ -1,33 +1,30 @@
-import { AuthorTag } from '../components/AuthorTag';
 import React, { useEffect, useState } from 'react';
-import { Plus, Check, Trash2, Pencil, Image as ImageIcon } from 'lucide-react';
+import { Plus, Check, Trash2, Pencil, MoreHorizontal, ChevronDown, Moon, CalendarDays } from 'lucide-react';
 import { useBucketStore } from '../stores/bucketStore';
 import { useMemoryStore } from '../stores/memoryStore';
-import { Card, Button, Modal, ErrorBanner, Spinner, ActionSheet, LongPressWrapper } from '../components/UI';
+import { Card, Button, Modal, ErrorBanner, Spinner, ActionSheet } from '../components/UI';
+import { SwipeRow } from '../components/Feedback';
+import { AuthorTag } from '../components/AuthorTag';
+import { showUndo } from '../stores/undoStore';
 import { BucketItem, Memory } from '../types';
-import { T, CONTEXT } from '../theme';
+import { formatDate } from '../services/time';
+import { CONTEXT } from '../theme';
 
 interface EnviesPageProps {
   onCreateMemoryFor?: (item: BucketItem) => void;
 }
 
-const inputStyle: React.CSSProperties = {
-  border: `1px solid ${T.border}`,
-  borderRadius: T.radius,
-  padding: '12px 16px',
-  fontFamily: T.font,
-  fontSize: 14,
-  outline: 'none',
-  color: T.ink,
-  background: T.surface,
-};
+type Filter = 'tout' | 'ce_soir' | 'plus_tard';
+const TIMING_LABEL = { ce_soir: 'Bientôt', plus_tard: 'Un jour' } as const;
 
 export const EnviesPage: React.FC<EnviesPageProps> = ({ onCreateMemoryFor }) => {
-  const { items, loading, error, loadItems, addItem, toggleComplete, updateTitle, deleteItem } = useBucketStore();
-  const memories = useMemoryStore((state) => state.memories);
+  const { items, loading, error, loadItems, addItem, toggleComplete, updateTitle, deleteItem, restoreItem } = useBucketStore();
+  const memories = useMemoryStore((s) => s.memories);
+  const [filter, setFilter] = useState<Filter>('tout');
   const [newTitle, setNewTitle] = useState('');
   const [newTiming, setNewTiming] = useState<'ce_soir' | 'plus_tard'>('plus_tard');
   const [showAdd, setShowAdd] = useState(false);
+  const [showDone, setShowDone] = useState(false);
   const [actionItem, setActionItem] = useState<BucketItem | null>(null);
   const [viewingMemory, setViewingMemory] = useState<Memory | null>(null);
   const [editItem, setEditItem] = useState<BucketItem | null>(null);
@@ -37,8 +34,7 @@ export const EnviesPage: React.FC<EnviesPageProps> = ({ onCreateMemoryFor }) => 
     loadItems();
   }, [loadItems]);
 
-  const memoryForItem = (itemId: string) =>
-    memories.find((m) => m.source === 'bucket' && m.source_id === itemId);
+  const memoryFor = (id: string) => memories.find((m) => m.source === 'bucket' && m.source_id === id);
 
   const handleAdd = async () => {
     if (!newTitle.trim()) return;
@@ -47,120 +43,135 @@ export const EnviesPage: React.FC<EnviesPageProps> = ({ onCreateMemoryFor }) => 
     setShowAdd(false);
   };
 
-  const handleToggleComplete = async (item: BucketItem) => {
-    const willComplete = !item.completed;
+  const toggle = async (item: BucketItem) => {
     await toggleComplete(item.id);
-    if (willComplete && !memoryForItem(item.id)) {
-      onCreateMemoryFor?.(item);
-    }
+    showUndo(item.completed ? 'Remise dans la liste.' : 'Bravo, envie réalisée !', () => restoreItem(item));
   };
-
-  const openEdit = (item: BucketItem) => {
-    setEditItem(item);
-    setEditTitle(item.title);
+  const remove = async (item: BucketItem) => {
+    await deleteItem(item.id);
+    showUndo('Envie supprimée.', () => restoreItem(item));
   };
-
-  const handleSaveEdit = async () => {
+  const saveEdit = async () => {
     if (!editItem || !editTitle.trim()) return;
     await updateTitle(editItem.id, editTitle.trim());
     setEditItem(null);
   };
 
-  const pending = items.filter((i) => !i.completed);
-  const ceSoir = pending.filter((i) => i.timing === 'ce_soir');
-  const plusTard = pending.filter((i) => i.timing === 'plus_tard');
-  const completed = items.filter((i) => i.completed);
+  const pending = items.filter((i) => !i.completed && (filter === 'tout' || i.timing === filter));
+  const done = items
+    .filter((i) => i.completed)
+    .sort((a, b) => (b.completed_at || '').localeCompare(a.completed_at || ''));
+  const counts = {
+    tout: items.filter((i) => !i.completed).length,
+    ce_soir: items.filter((i) => !i.completed && i.timing === 'ce_soir').length,
+    plus_tard: items.filter((i) => !i.completed && i.timing === 'plus_tard').length,
+  };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16, paddingBottom: 80 }}>
+    <div className="stack page">
       {error && <ErrorBanner message={error} />}
 
       {showAdd ? (
-        <Card style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <Button size="sm" variant={newTiming === 'ce_soir' ? 'primary' : 'ghost'} onClick={() => setNewTiming('ce_soir')} style={newTiming === 'ce_soir' ? { background: CONTEXT.envies } : {}}>
-              Ce soir
-            </Button>
-            <Button size="sm" variant={newTiming === 'plus_tard' ? 'primary' : 'ghost'} onClick={() => setNewTiming('plus_tard')} style={newTiming === 'plus_tard' ? { background: CONTEXT.envies } : {}}>
-              Plus tard
-            </Button>
+        <Card style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <input
+            className="field"
+            type="text"
+            placeholder="Une envie..."
+            value={newTitle}
+            onChange={(e) => setNewTitle(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
+            autoFocus
+          />
+          <div className="segmented">
+            <button className={newTiming === 'ce_soir' ? 'on' : ''} onClick={() => setNewTiming('ce_soir')}>Bientôt</button>
+            <button className={newTiming === 'plus_tard' ? 'on' : ''} onClick={() => setNewTiming('plus_tard')}>Un jour</button>
           </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <input type="text" placeholder="Une envie..." value={newTitle} onChange={(e) => setNewTitle(e.target.value)} autoFocus style={{ flex: 1, ...inputStyle }} />
-            <Button size="sm" onClick={handleAdd} style={{ background: CONTEXT.envies }}>Ajouter</Button>
+          <div className="row">
+            <Button variant="secondary" full onClick={() => setShowAdd(false)}>Annuler</Button>
+            <Button full onClick={handleAdd} style={{ background: CONTEXT.envies, color: '#FBF6EE' }}>Ajouter</Button>
           </div>
         </Card>
       ) : (
-        <Button full onClick={() => setShowAdd(true)} style={{ background: CONTEXT.envies }}>
-          <Plus size={16} style={{ marginRight: 8 }} />
-          Une envie ?
-        </Button>
+        <button className="add-line" onClick={() => setShowAdd(true)}>
+          <Plus size={18} /> Une envie ?
+        </button>
+      )}
+
+      {counts.tout > 0 && (
+        <div className="filters" role="tablist">
+          {(['tout', 'ce_soir', 'plus_tard'] as Filter[]).map((f) => (
+            <button key={f} role="tab" aria-selected={filter === f} className={filter === f ? 'on' : ''} onClick={() => setFilter(f)}>
+              {f === 'tout' ? 'Tout' : TIMING_LABEL[f]} <span className="count">{counts[f]}</span>
+            </button>
+          ))}
+        </div>
       )}
 
       {loading && items.length === 0 ? (
-        <Spinner label="Chargement des envies..." />
+        <Spinner />
       ) : (
         <>
-          {ceSoir.length > 0 && (
-            <EnvieGroup title="Ce soir" items={ceSoir} onToggle={handleToggleComplete} onLongPress={setActionItem} />
-          )}
-          {plusTard.length > 0 && (
-            <EnvieGroup title="Plus tard" items={plusTard} onToggle={handleToggleComplete} onLongPress={setActionItem} />
-          )}
-
-          {completed.length > 0 && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <h3 style={{ fontSize: 14, fontWeight: 600, color: T.muted, margin: 0 }}>Réalisé ✓</h3>
-              {completed.map((item) => {
-                const linkedMemory = memoryForItem(item.id);
-                return (
-                  <Card key={item.id} onContextMenu={(e) => { e.preventDefault(); setActionItem(item); }} style={{ display: 'flex', flexDirection: 'column', gap: 10, opacity: 0.85 }}>
-                    <LongPressWrapper onLongPress={() => setActionItem(item)}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                        <button
-                          onClick={() => handleToggleComplete(item)}
-                          style={{ width: 24, height: 24, borderRadius: '50%', border: 'none', background: CONTEXT.envies, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
-                        >
-                          <Check size={14} color="#fff" />
-                        </button>
-                        <div style={{ flex: 1 }}>
-                          <p style={{ fontSize: 14, margin: 0, textDecoration: 'line-through', color: T.ink }}>{item.title}</p>
-                          <AuthorTag author={item.author} doneBy={item.completed_by} doneLabel="coché par" />
-                        </div>
-                      </div>
-                      {linkedMemory ? (
-                        <div
-                          onClick={() => setViewingMemory(linkedMemory)}
-                          style={{ display: 'flex', gap: 10, alignItems: 'center', background: T.paper2, borderRadius: T.radiusSm, padding: 10, marginTop: 10, cursor: 'pointer' }}
-                        >
-                          {linkedMemory.photo_url ? (
-                            <img src={linkedMemory.photo_url} alt="" style={{ width: 40, height: 40, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }} />
-                          ) : (
-                            <div style={{ width: 40, height: 40, borderRadius: 8, background: T.border, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                              <ImageIcon size={16} color={T.muted} />
-                            </div>
-                          )}
-                          <p style={{ fontSize: 12.5, color: T.ink, margin: 0, lineHeight: 1.4 }}>{linkedMemory.text}</p>
-                        </div>
-                      ) : (
-                        <button
-                          onClick={() => onCreateMemoryFor?.(item)}
-                          style={{ background: 'none', border: `1px dashed ${T.border}`, borderRadius: T.radiusSm, padding: '8px 10px', fontSize: 12.5, color: CONTEXT.envies, cursor: 'pointer', fontFamily: T.font, textAlign: 'left', marginTop: 10 }}
-                        >
-                          + Garder cet instant
-                        </button>
-                      )}
-                    </LongPressWrapper>
-                  </Card>
-                );
-              })}
-            </div>
-          )}
+          <section className="stack-sm">
+            {pending.map((item) => (
+              <SwipeRow key={item.id} onSwipeRight={() => toggle(item)} rightLabel="Fait !" rightColor={CONTEXT.envies} onSwipeLeft={() => setActionItem(item)}>
+                <div className="item">
+                  <button className="check" style={{ borderColor: CONTEXT.envies }} onClick={() => toggle(item)} aria-label="Marquer comme réalisée" />
+                  <div className="item-body">
+                    <p className="item-title">{item.title}</p>
+                    <p className="item-meta">
+                      {item.timing === 'ce_soir' ? <Moon size={12} /> : <CalendarDays size={12} />} {TIMING_LABEL[item.timing]}
+                      <AuthorTag author={item.author} inline />
+                    </p>
+                  </div>
+                  <button className="icon-btn" onClick={() => setActionItem(item)} aria-label="Options"><MoreHorizontal size={18} /></button>
+                </div>
+              </SwipeRow>
+            ))}
+            {pending.length === 0 && counts.tout > 0 && <p className="empty">Rien dans cette catégorie pour l'instant.</p>}
+          </section>
 
           {items.length === 0 && (
-            <Card style={{ textAlign: 'center', padding: 40, color: T.muted }}>
-              Une petite idée aujourd'hui peut devenir un bel instant demain.
-            </Card>
+            <p className="empty">Une petite idée aujourd'hui peut devenir un bel instant demain. Glissez une envie vers la droite quand elle est réalisée.</p>
+          )}
+
+          {done.length > 0 && (
+            <section className="stack-sm">
+              <button className="section-toggle" onClick={() => setShowDone((v) => !v)} aria-expanded={showDone}>
+                <span>Réalisées ({done.length})</span>
+                <ChevronDown size={18} style={{ transform: showDone ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+              </button>
+              {showDone &&
+                done.map((item) => {
+                  const linked = memoryFor(item.id);
+                  return (
+                    <SwipeRow key={item.id} onSwipeLeft={() => setActionItem(item)}>
+                      <div className="item faded">
+                        <button className="check done" style={{ background: CONTEXT.envies, borderColor: CONTEXT.envies }} onClick={() => toggle(item)} aria-label="Remettre dans la liste">
+                          <Check size={13} />
+                        </button>
+                        <div className="item-body">
+                          <p className="item-title">{item.title}</p>
+                          <p className="item-meta">
+                            {item.completed_at ? `Le ${formatDate(item.completed_at)}` : 'Réalisée'}
+                            {item.completed_by ? `, coché par ${item.completed_by}` : ''}
+                          </p>
+                          {linked ? (
+                            <button className="link-btn" style={{ color: CONTEXT.envies, padding: '4px 0', textAlign: 'left' }} onClick={() => setViewingMemory(linked)}>
+                              Voir l'instant
+                            </button>
+                          ) : (
+                            onCreateMemoryFor && (
+                              <button className="link-btn" style={{ color: CONTEXT.envies, padding: '4px 0', textAlign: 'left' }} onClick={() => onCreateMemoryFor(item)}>
+                                + Garder cet instant
+                              </button>
+                            )
+                          )}
+                        </div>
+                      </div>
+                    </SwipeRow>
+                  );
+                })}
+            </section>
           )}
         </>
       )}
@@ -171,70 +182,31 @@ export const EnviesPage: React.FC<EnviesPageProps> = ({ onCreateMemoryFor }) => 
         items={
           actionItem
             ? [
-                { key: 'edit', icon: <Pencil size={16} />, label: 'Modifier', onClick: () => openEdit(actionItem) },
-                { key: 'delete', icon: <Trash2 size={16} color="#C0392B" />, label: 'Supprimer', danger: true, onClick: () => deleteItem(actionItem.id) },
+                { key: 'edit', icon: <Pencil size={16} />, label: 'Modifier', onClick: () => { setEditItem(actionItem); setEditTitle(actionItem.title); } },
+                { key: 'toggle', icon: <Check size={16} />, label: actionItem.completed ? 'Remettre dans la liste' : 'Réalisée', onClick: () => toggle(actionItem) },
+                { key: 'delete', icon: <Trash2 size={16} color="var(--rust)" />, label: 'Supprimer', danger: true, onClick: () => remove(actionItem) },
               ]
             : []
         }
       />
 
       <Modal isOpen={!!editItem} onClose={() => setEditItem(null)} title="Modifier l'envie">
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <input type="text" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} autoFocus style={inputStyle} />
-          <div style={{ display: 'flex', gap: 8 }}>
-            <Button full variant="secondary" onClick={() => setEditItem(null)}>Annuler</Button>
-            <Button full onClick={handleSaveEdit} style={{ background: CONTEXT.envies }}>Enregistrer</Button>
-          </div>
+        <div className="stack">
+          <input className="field" type="text" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} autoFocus />
+          <Button full onClick={saveEdit} style={{ background: CONTEXT.envies, color: '#FBF6EE' }}>Enregistrer</Button>
         </div>
       </Modal>
 
       <Modal isOpen={!!viewingMemory} onClose={() => setViewingMemory(null)} title="Instant">
         {viewingMemory && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            {viewingMemory.photo_url && (
-              <img src={viewingMemory.photo_url} alt="" style={{ width: '100%', maxHeight: 280, borderRadius: T.radius, objectFit: 'cover' }} />
-            )}
-            <p style={{ fontSize: 12, color: T.muted, margin: 0 }}>
-              {viewingMemory.poetic || new Date(viewingMemory.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
-            </p>
-            <p style={{ fontSize: 16, fontWeight: 500, margin: 0, lineHeight: 1.5, color: T.ink }}>{viewingMemory.text}</p>
-            {viewingMemory.location && (
-              <p style={{ fontSize: 13, color: T.muted, margin: 0 }}>📍 {viewingMemory.location}</p>
-            )}
+          <div className="stack">
+            {viewingMemory.photo_url && <img src={viewingMemory.photo_url} alt="" style={{ width: '100%', maxHeight: 280, borderRadius: 'var(--radius)', objectFit: 'cover' }} />}
+            <p className="muted">{viewingMemory.poetic || formatDate(viewingMemory.date)}</p>
+            <p className="ink" style={{ fontSize: 17, lineHeight: 1.5, margin: 0 }}>{viewingMemory.text}</p>
+            {viewingMemory.location && <p className="muted">{viewingMemory.location}</p>}
           </div>
         )}
       </Modal>
     </div>
   );
 };
-
-interface EnvieGroupProps {
-  title: string;
-  items: BucketItem[];
-  onToggle: (item: BucketItem) => void;
-  onLongPress: (item: BucketItem) => void;
-}
-
-const EnvieGroup: React.FC<EnvieGroupProps> = ({ title, items, onToggle, onLongPress }) => (
-  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-    <h3 style={{ fontSize: 14, fontWeight: 600, color: T.muted, margin: 0 }}>{title}</h3>
-    {items.map((item) => (
-      <Card key={item.id} onContextMenu={(e) => { e.preventDefault(); onLongPress(item); }} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <LongPressWrapper onLongPress={() => onLongPress(item)}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <button
-              onClick={() => onToggle(item)}
-              style={{ width: 24, height: 24, borderRadius: '50%', border: `2px solid ${CONTEXT.envies}`, background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
-            >
-              <Check size={14} color={CONTEXT.envies} style={{ opacity: 0 }} />
-            </button>
-            <div style={{ flex: 1 }}>
-              <p style={{ fontSize: 14, margin: 0, color: T.ink }}>{item.title}</p>
-              <AuthorTag author={item.author} />
-            </div>
-          </div>
-        </LongPressWrapper>
-      </Card>
-    ))}
-  </div>
-);

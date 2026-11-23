@@ -11,38 +11,39 @@ export const T = {
   radius: 'var(--radius)',
   radiusMd: 'var(--radius-md)',
   radiusSm: 'var(--radius-sm)',
-  font: "-apple-system,'SF Pro Text','Helvetica Neue',sans-serif",
+  rust: 'var(--rust)',
+  font: "'Figtree',-apple-system,'SF Pro Text','Helvetica Neue',sans-serif",
+  display: "'Bricolage Grotesque','Figtree',-apple-system,sans-serif",
 };
 
 // Couleurs contextuelles par module — jamais liées à une émotion, juste à une section.
 // Partagées entre tous les thèmes (via variables CSS), pilotables en
 // direct par l'éditeur de couleurs (voir ColorEditor).
 export const CONTEXT = {
-  adeux: 'var(--context-adeux)', // bleu doux
-  priere: 'var(--context-priere)', // lavande
-  envies: 'var(--context-envies)', // ambre
-  instants: 'var(--context-instants)', // vert sauge
-  libre: 'var(--context-libre)', // gris chaud
+  adeux: 'var(--context-adeux)', // rouge orangé
+  priere: 'var(--context-priere)', // vieux rose brun
+  envies: 'var(--context-envies)', // miel
+  instants: 'var(--context-instants)', // vert canapé
+  libre: 'var(--context-libre)', // brun clair
 };
 
 // Valeurs par défaut (utilisées par l'éditeur de couleurs pour l'état
 // initial et le bouton "Réinitialiser").
 export const DEFAULT_CONTEXT_COLORS = {
-  adeux: '#8CA4BD',
-  priere: '#A99BB5',
-  envies: '#D3A45C',
-  instants: '#8CA893',
-  libre: '#A69C90',
+  adeux: '#C4532F',
+  priere: '#85596A',
+  envies: '#B37A2C',
+  instants: '#4E6E55',
+  libre: '#8F7A66',
 };
-export const DEFAULT_RADIUS = { radius: 17, radiusMd: 17, radiusSm: 32 };
+export const DEFAULT_RADIUS = { radius: 18, radiusMd: 14, radiusSm: 999 };
 
-export type ThemeName = 'papier' | 'sauge' | 'nuit' | 'douceur';
-export const THEME_ORDER: ThemeName[] = ['papier', 'sauge', 'nuit', 'douceur'];
+export type ThemeName = 'salon' | 'soiree' | 'papier';
+export const THEME_ORDER: ThemeName[] = ['salon', 'soiree', 'papier'];
 export const THEME_LABELS: Record<ThemeName, string> = {
+  salon: 'Salon',
+  soiree: 'Soirée',
   papier: 'Papier',
-  sauge: 'Sauge',
-  nuit: 'Nuit',
-  douceur: 'Douceur',
 };
 
 // Palette de base par thème (valeurs par défaut, définies aussi dans
@@ -51,10 +52,9 @@ export const THEME_VARS = ['paper', 'paper2', 'surface', 'ink', 'muted', 'border
 export type ThemeVar = (typeof THEME_VARS)[number];
 
 export const DEFAULT_THEME_PALETTES: Record<ThemeName, Record<ThemeVar, string>> = {
-  papier: { paper: '#F7F3EC', paper2: '#EDE8DF', surface: '#FFFFFF', ink: '#2E2B27', muted: '#8A8377', border: '#E4DED2', accent: '#8FA895' },
-  sauge: { paper: '#EEF1EA', paper2: '#E2E8DD', surface: '#FFFFFF', ink: '#28312B', muted: '#6E8F72', border: '#DCE3D8', accent: '#6E8F72' },
-  nuit: { paper: '#1C1B19', paper2: '#26241F', surface: '#26241F', ink: '#EDEAE3', muted: '#948C7C', border: '#3A372F', accent: '#8FA895' },
-  douceur: { paper: '#F8F5F1', paper2: '#E8DDD1', surface: '#FFFFFF', ink: '#5A4A42', muted: '#A9938A', border: '#E8DDD1', accent: '#A9B79D' },
+  salon: { paper: '#F3EADC', paper2: '#E9DCC7', surface: '#FBF6EE', ink: '#33241B', muted: '#73604F', border: '#DECDB3', accent: '#3F5E47' },
+  soiree: { paper: '#211813', paper2: '#2D221B', surface: '#2A2019', ink: '#F2E7D8', muted: '#B8A08A', border: '#45362B', accent: '#7FA588' },
+  papier: { paper: '#F7F3EC', paper2: '#EDE8DF', surface: '#FFFFFF', ink: '#2E2B27', muted: '#736C61', border: '#E4DED2', accent: '#6F8C76' },
 };
 
 // Couleur automatique d'un instant selon ce à quoi il est lié — jamais
@@ -105,5 +105,5 @@ export function getStoredTheme(): ThemeName {
   } catch {
     /* ignore */
   }
-  return 'papier';
+  return 'salon';
 }

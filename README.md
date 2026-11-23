@@ -33,4 +33,9 @@ src/
 ## Modifier le contenu des jeux
 
 Éditer les fichiers de `content/` puis pousser sur GitHub : le site se redéploie tout seul.
-Pour « Tu préfères », une ligne s'écrit `option A | option B`.
+
+- `tupreferes.txt` : une ligne = `option A | option B`.
+- `chronomots.txt` : une ligne = un mot ; `# Catégorie` commence une nouvelle catégorie.
+- `versets.txt` : une ligne = `référence | texte | mot à retrouver` (Louis Segond 1910). Le mot doit apparaître tel quel dans le texte.
+
+La question du jour et le défi de la semaine sont rangés dans l'onglet `settings` du Sheets (lignes `qdj:…` et `defi:…`).
