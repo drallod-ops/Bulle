@@ -1,0 +1,110 @@
+/* Classes partagées, basées sur les variables du thème (index.css).
+   Les nouveaux composants les utilisent à la place des styles en ligne. */
+
+.stack { display: flex; flex-direction: column; gap: 16px; }
+.stack-sm { display: flex; flex-direction: column; gap: 8px; }
+.row { display: flex; gap: 8px; align-items: center; }
+.row > .grow { flex: 1; }
+.wrap { flex-wrap: wrap; }
+
+.muted { color: var(--muted); font-size: 13px; margin: 0; line-height: 1.45; }
+.small { font-size: 12px; }
+.ink { color: var(--ink); }
+.center { text-align: center; }
+
+.chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 11.5px; color: var(--muted); background: var(--paper2);
+  border-radius: 20px; padding: 4px 10px;
+}
+.chip-accent {
+  align-self: flex-start; font-size: 11px; font-weight: 600;
+  color: var(--context-adeux);
+  background: color-mix(in srgb, var(--context-adeux) 14%, transparent);
+  border-radius: 20px; padding: 3px 10px;
+}
+
+.prompt-box {
+  background: var(--paper2); border-radius: var(--radius);
+  padding: 18px 20px; font-size: 15px; color: var(--ink); line-height: 1.5; margin: 0;
+}
+.prompt-box.big { font-size: 22px; font-weight: 700; text-align: center; padding: 28px 20px; }
+
+.link-btn {
+  background: none; border: none; cursor: pointer; font: inherit;
+  font-size: 12.5px; color: var(--context-adeux); text-align: center; padding: 6px;
+}
+.link-btn.quiet { color: var(--muted); font-size: 12px; }
+
+.field {
+  width: 100%; box-sizing: border-box;
+  border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px;
+  font: inherit; font-size: 14px; color: var(--ink); background: var(--surface); outline: none;
+}
+.field:focus { border-color: var(--context-adeux); }
+
+.divider { border-top: 1px solid var(--border); padding-top: 14px; }
+
+/* Choix à toucher (joueurs, options A/B) */
+.choice {
+  flex: 1; border: 1px solid var(--border); background: var(--surface); color: var(--ink);
+  border-radius: var(--radius); padding: 14px 12px; font: inherit; font-size: 14px;
+  font-weight: 600; cursor: pointer; line-height: 1.35;
+}
+.choice:active { transform: scale(0.98); }
+.choice.selected { border-color: var(--context-adeux); background: color-mix(in srgb, var(--context-adeux) 14%, var(--surface)); }
+.choice.good { border-color: var(--context-instants); background: color-mix(in srgb, var(--context-instants) 18%, var(--surface)); }
+.choice.bad { border-color: var(--border); opacity: 0.6; }
+
+/* Score en cours de partie */
+.score-strip { display: flex; gap: 8px; }
+.score-cell {
+  flex: 1; background: var(--paper2); border-radius: var(--radius-md);
+  padding: 8px 10px; display: flex; justify-content: space-between; align-items: baseline;
+}
+.score-cell .name { font-size: 12px; color: var(--muted); }
+.score-cell .pts { font-size: 20px; font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; }
+.score-cell.turn { outline: 2px solid var(--context-adeux); }
+
+/* Minuteur */
+.timer {
+  font-size: 48px; font-weight: 700; text-align: center; color: var(--ink);
+  font-variant-numeric: tabular-nums; margin: 0;
+}
+.timer.low { color: var(--context-envies); }
+
+/* Tableau des scores */
+.board { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.board-cell { display: flex; flex-direction: column; gap: 2px; }
+.board-cell .big { font-size: 26px; font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; }
+.board-cell .label { font-size: 12px; color: var(--muted); }
+.history-item { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--ink); padding: 6px 0; }
+.history-item + .history-item { border-top: 1px solid var(--border); }
+.history-item .meta { color: var(--muted); font-size: 11.5px; }
+.icon-btn { background: none; border: none; cursor: pointer; padding: 4px; color: var(--muted); display: flex; }
+
+/* Indicateur de synchro */
+.sync-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 11.5px; color: var(--muted); background: var(--paper2);
+  border-radius: 20px; padding: 4px 10px; border: none; font-family: inherit; cursor: pointer;
+}
+.sync-badge.error { color: var(--context-envies); }
+
+/* Écran de connexion */
+.setup {
+  min-height: 100vh; min-height: 100dvh; box-sizing: border-box;
+  display: flex; flex-direction: column; justify-content: center;
+  max-width: 380px; margin: 0 auto;
+  padding: calc(24px + env(safe-area-inset-top)) 24px calc(24px + env(safe-area-inset-bottom));
+  gap: 18px; background: var(--paper); color: var(--ink);
+}
+.setup h1 { font-size: 34px; margin: 0; letter-spacing: -0.02em; }
+.setup label { font-size: 12px; color: var(--muted); display: block; margin-bottom: 6px; }
+.error-text { color: #B4553C; font-size: 13px; margin: 0; }
+
+.author { font-size: 11px; color: var(--muted); margin: 2px 0 0 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}

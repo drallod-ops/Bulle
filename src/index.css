@@ -1,0 +1,80 @@
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body, #root {
+  height: 100%;
+  width: 100%;
+}
+
+body,
+body[data-theme='papier'] {
+  --paper: #F7F3EC;
+  --paper2: #EDE8DF;
+  --surface: #FFFFFF;
+  --ink: #2E2B27;
+  --muted: #8A8377;
+  --border: #E4DED2;
+  --accent: #8FA895;
+}
+
+body[data-theme='sauge'] {
+  --paper: #EEF1EA;
+  --paper2: #E2E8DD;
+  --surface: #FFFFFF;
+  --ink: #28312B;
+  --muted: #6E8F72;
+  --border: #DCE3D8;
+  --accent: #6E8F72;
+}
+
+body[data-theme='nuit'] {
+  color-scheme: dark;
+  --paper: #1C1B19;
+  --paper2: #26241F;
+  --surface: #26241F;
+  --ink: #EDEAE3;
+  --muted: #948C7C;
+  --border: #3A372F;
+  --accent: #8FA895;
+}
+
+body[data-theme='douceur'] {
+  --paper: #F8F5F1;
+  --paper2: #E8DDD1;
+  --surface: #FFFFFF;
+  --ink: #5A4A42;
+  --muted: #A9938A;
+  --border: #E8DDD1;
+  --accent: #A9B79D;
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: -apple-system, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background 0.25s ease-out, color 0.25s ease-out;
+
+  /* Couleurs de modules et rayons — partagés par tous les thèmes,
+     pilotables en direct par l'éditeur de couleurs. */
+  --radius: 17px;
+  --radius-md: 17px;
+  --radius-sm: 32px;
+  --context-adeux: #8CA4BD;
+  --context-envies: #D3A45C;
+  --context-priere: #A99BB5;
+  --context-instants: #8CA893;
+  --context-libre: #A69C90;
+}
+
+/* iOS Safari zoome automatiquement (et dézoome mal) sur tout champ de
+   saisie affiché à moins de 16px. On force ce minimum partout, quel
+   que soit le style défini par ailleurs, pour éviter ce comportement
+   gênant sur mobile. */
+input, select, textarea {
+  font-size: 16px !important;
+}
